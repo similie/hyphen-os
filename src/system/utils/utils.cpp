@@ -32,8 +32,8 @@ bool waitFor(std::function<bool()> condition, unsigned long timeout)
             return false; // Timeout occurred
         }
         // Perform background tasks to keep the system responsive
-        // Hyphen.process(); // Specific to Particle devices
-        delay(1); // Yield to other tasks (optional)
+        Hyphen.process();
+        vTaskDelay(1); // Yield to other tasks (optional)
     }
     return true; // Condition met within timeout
 }

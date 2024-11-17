@@ -249,14 +249,15 @@ void Bootstrap::setFunctions()
 }
 
 /**
- * @public epromSize
+ * @public storageSize
  *
- * the total size of eprom memory
+ * the total size of  memory
  * @return size_t - total memory
  */
-size_t Bootstrap::epromSize()
+size_t Bootstrap::storageSize()
 {
-    return 1024;
+    // arbitrary number, should be larger than the largest config value
+    return STORAGE_SIZE;
 }
 
 /**
@@ -273,13 +274,13 @@ uint16_t Bootstrap::deviceInitAddress()
 /**
  * @private exceedsMaxAddressSize
  *
- * Checks to see of the EEPROM address size is too excessive
- * MAX_EEPROM_ADDRESS 8197 MAX_U16 65535
+ * Checks to see of the storage address size is too excessive
+ * MAX_STORAGE_ADDRESS 8197 MAX_U16 65535
  * @return bool
  */
 bool Bootstrap::doesNotExceedsMaxAddressSize(uint16_t address)
 {
-    return address >= deviceInitAddress() && address < Bootstrap::epromSize();
+    return address >= deviceInitAddress() && address < Bootstrap::storageSize();
 }
 
 /**
@@ -299,7 +300,6 @@ void Bootstrap::collectDevices()
          */
         uint16_t address = deviceMetaAddresses[i];
         Utils::log("DEVICE_REGISTRATION_ADDRESSES", "VALUE:: " + String(address));
-        // DeviceStruct device;
         Persist.get(address, devices[i]);
         String deviceDetails = String(devices[i].version) + " " + String(devices[i].size) + " " + String(devices[i].name) + " " + String(devices[i].address);
         Utils::log("DEVICE_STORE_PULLED", deviceDetails);
@@ -345,7 +345,6 @@ DeviceStruct Bootstrap::getDeviceByName(String name, uint16_t size)
     for (size_t i = 0; i < MAX_DEVICES && i < this->deviceMeta.count; i++)
     {
         DeviceStruct device = this->devices[i];
-        // Log.info("SEARCHING FOR REGISTERED DEVICE %lu %lu", dName, device.name);
         Utils::log("SEARCHING_FOR_REGISTERED_DEVICE", String(dName) + " " + String(device.name) + " " + String(dName == device.name));
         if (dName == device.name)
         {
@@ -354,7 +353,7 @@ DeviceStruct Bootstrap::getDeviceByName(String name, uint16_t size)
     }
     // now build it
     uint16_t next = getNextDeviceAddress();
-    Utils::log("THIS_IS_THE_NEXT_DEVICE_ADRESS_FOR " + name, String(next));
+    Utils::log("THIS_IS_THE_NEXT_DEVICE_ADDRESS_FOR " + name, String(next));
     DeviceStruct device = {1, size, dName, next};
     this->addNewDeviceToStructure(device);
     return device;
@@ -450,7 +449,7 @@ uint16_t Bootstrap::getNextDeviceAddress()
  */
 void Bootstrap::processRegistration()
 {
-    Utils::log("EPROM_REGISTRATION", String(this->deviceMeta.count) + " " + String(this->deviceMeta.version));
+    Utils::log("STORAGE_REGISTRATION", String(this->deviceMeta.count) + " " + String(this->deviceMeta.version));
     if (!Utils::validConfigIdentity(this->deviceMeta.version))
     {
         this->deviceMeta = {1, 0};
@@ -505,7 +504,7 @@ void Bootstrap::pullRegistration()
  */
 void Bootstrap::addNewDeviceToStructure(DeviceStruct device)
 {
-    if (device.address > this->epromSize())
+    if (device.address > this->storageSize())
     {
         Utils::log("ERROR_ADDING_DEVICE: Address_EXCEEDED", String(device.address));
         return;

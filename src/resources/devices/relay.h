@@ -8,6 +8,7 @@
 #ifndef relay_h
 #define relay_h
 #define DEFAULT_RELAY_PIN 7
+#define ON_BOARD_RELAY_PIN 2
 class Relay : public Device
 {
 private:

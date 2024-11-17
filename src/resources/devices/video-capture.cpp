@@ -334,7 +334,7 @@ void VideoCapture::preCaptureCamera()
 
 void VideoCapture::sendBuffer(uint8_t *buffer, uint8_t bytesToRead)
 {
-    client.write(buffer, bytesToRead, 10000);
+    client.write(buffer, bytesToRead);
 }
 
 void VideoCapture::writeAString(String topic)

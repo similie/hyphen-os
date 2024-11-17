@@ -6,6 +6,7 @@
 #include "resources/utils/battery.h"
 #include "resources/utils/utils.h"
 
+#define STORAGE_SIZE 8197
 static const int TIMEZONE = TIMEZONE_SET;
 
 struct DeviceConfig
@@ -124,7 +125,7 @@ public:
     unsigned int getReadTime();
     unsigned int getPublishTime();
     uint16_t registerAddress(String, uint16_t);
-    static size_t epromSize();
+    static size_t storageSize();
     size_t getMaxVal();
     String removeNewLine(String value);
 };

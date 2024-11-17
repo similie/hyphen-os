@@ -23,7 +23,7 @@ class VideoCapture : public Device
 private:
     VideoCaptureStruct config;
     uint16_t eepromAddress = 0;
-    Relay relay = Relay(7, false);
+    Relay relay = Relay(ON_BOARD_RELAY_PIN, false);
     Adafruit_VC0706 cam = Adafruit_VC0706(&Serial1);
     TCPClient client;
     Bootstrap *boots;

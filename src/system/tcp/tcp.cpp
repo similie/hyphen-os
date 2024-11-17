@@ -2,25 +2,21 @@
 
 bool TCPClient::status()
 {
-    return true;
+    return Hyphen.hyConnect().getClient().connected();
 }
-bool TCPClient::connect(const char *, uint16_t)
+int TCPClient::connect(const char *host, uint16_t port)
 {
-    return true;
+    return Hyphen.hyConnect().getClient().connect(host, port);
 }
-bool TCPClient::connect(String url, uint16_t port)
+int TCPClient::connect(String url, uint16_t port)
 {
-    return true;
+    return connect(url.c_str(), port);
 }
 void TCPClient::stop()
 {
+    Hyphen.hyConnect().getClient().stop();
 }
-// bool connected();
-bool TCPClient::write(const uint8_t *buffer, size_t length, int timeoutMAYBE)
+size_t TCPClient::write(const uint8_t *buffer, size_t length)
 {
-    return true;
-}
-bool TCPClient::write(const uint8_t *buffer, size_t length)
-{
-    return true;
+    return Hyphen.hyConnect().getClient().write(buffer, length);
 }

@@ -24,7 +24,6 @@ SDI12Device::SDI12Device(Bootstrap *boots)
  */
 SDI12Device::~SDI12Device()
 {
-    // sdi12->end();
 }
 
 /**
@@ -474,13 +473,6 @@ void SDI12Device::init()
     }
 
     manager.start();
-
-    // if (sdi12.isActive())
-    // {
-    //     return;
-    // }
-    // sdi12.setDataPin(SDI12_PIN);
-    // sdi12.begin();
 }
 
 /**

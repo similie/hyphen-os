@@ -111,36 +111,6 @@ void HyphenClass::function(const char *name, std::function<int(const std::string
         // Convert the params to a string and pass it to the func
         return func(std::string(params)); });
 }
-// void HyphenClass::function(const char *name, std::function<int(const std::string &)> *func, void *instance)
-// {
-// }
-// template <typename T>
-// void HyphenClass::function(const char *name, int (T::*func)(String), T *instance)
-// {
-//     std::function<int(const std::string &)> boundFunc = [func, instance](const std::string &param)
-//     {
-//         return (instance->*func)(String(param.c_str()));
-//     };
-//     function(name, boundFunc);
-// }
-
-// template <typename T>
-// void HyphenClass::function(const char *name, int (T::*func)(const std::string &), T *instance)
-// {
-//     std::function<int(const std::string &)> boundFunc = [func, instance](const std::string &param)
-//     {
-//         return (instance->*func)(param);
-//     };
-//     function(name, boundFunc);
-// }
-
-//  void function(const char *, std::function<int(const std::string &)> *, void *);
-//     template <typename T>
-//     void function(const char *, int (T::*)(String), T *);
-
-//     template <typename T>
-//     void function(const char *, int (T::*)(const std::string &), T *);
-
 String HyphenClass::deviceID()
 {
     return String(DEVICE_PUBLIC_ID);
@@ -159,6 +129,7 @@ bool HyphenClass::connect()
 }
 void HyphenClass::reset()
 {
+    ESP.restart();
 }
 bool HyphenClass::publish(String topic, String payload)
 {

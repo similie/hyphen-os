@@ -11,12 +11,9 @@ private:
     /**
      * We send to different events to load balanance
      */
-    // const char *SEND_EVENT_NAME = "Al/Post/Red";
-    // const char *SEND_EVENT_NAME = "Al/Post/White";
-    const char *SEND_EVENT_NAME = "Al/Post/Blue";
-    // const char *SEND_EVENT_NAME = "Al/Post/Black";
-    const char *SEND_EVENT_MAINTENANCE = "Al/Post/Maintain";
-    const char *SEND_EVENT_HEARTBEAT = "Al/Post/Heartbeat";
+    const char *SEND_EVENT_NAME = "Hy/Post/Black";
+    const char *SEND_EVENT_MAINTENANCE = "HY/Post/Maintain";
+    const char *SEND_EVENT_HEARTBEAT = "HY/Post/Heartbeat";
     void manageManualModel();
     const bool MANUAL_MODE = false;
 
@@ -30,7 +27,6 @@ public:
     String getHeartbeatTopic();
     String getPublishTopic(bool maintenance);
     bool connect();
-    // bool connected(); // review
     void disconnect();
     bool isConnected();
     bool init();

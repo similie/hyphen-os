@@ -52,26 +52,13 @@ DeviceManager::DeviceManager(LocalProcessor *processor, bool debug)
     // // unless others datasets are needed. Most values will only needs the
     // // ONE_I for the first dimension.
     // this->devices[ONE_I][ONE_I] = new VideoCapture(&boots);
-    // // this->devices[ONE_I][ONE_I] = new RikaAirQuality(&boots, "03:CH4", 4);
-    // this->devices[ONE_I][ONE_I] = new RikaAirQuality(&boots, "T;H;P;PM2;PM10", 2);
-    // this->devices[ONE_I][TWO_I] = new RikaAirQuality(&boots, "CO2;;SO2;NO2", 5);
-    // this->devices[ONE_I][THREE_I] = new RikaAirQuality(&boots, "03;CH4", 4);
 
     // // all weather
     // deviceAggregateCounts[ONE_I] = {TWO};
     // this->devices[ONE_I][ONE_I] = new AllWeather(&boots, ONE_I);
     // // battery
     // this->devices[ONE_I][TWO_I] = new Battery();
-
     // this->devices[ONE_I][TWO_I] = new AllWeather(&boots, ONE_I);
-    // // battery
-    // this->devices[ONE_I][THREE_I] = new Battery();
-    // soil moisture
-    // this->devices[ONE_I][THREE_I] = new SoilMoisture(&boots, TWO_I);
-    // // water level
-    // this->devices[ONE_I][FOUR_I] = new WlDevice(&boots, TWO_I);
-    // rain gauge
-    // this->devices[ONE_I][FIVE_I] = new RainGauge(boots);
 }
 
 //////////////////////////////
@@ -110,20 +97,15 @@ void DeviceManager::init()
 {
     // apply delay to see the devices bootstrapping
     // in the serial console
-    // Persist.clear();
-    // delay(10000);
-
-    Serial.println("Connecting...");
     if (!processor->init())
     {
         Serial.println("Failed to connect to the network");
         return init();
     }
     Log.noticeln("BootStrapping");
-    delay(2000);
     boots.init();
     Log.noticeln("ITERATING DEVICES");
-    delay(2000);
+    // delay(2000);
     waitForTrue(&DeviceManager::isStrapped, this, 10000);
     // // if there are already default devices, let's process
     // // their init before we run the dynamic configuration
@@ -263,11 +245,12 @@ void DeviceManager::setParamsCount()
  */
 void DeviceManager::process()
 {
-    if (rebootEvent)
+    if (!rebootEvent)
     {
-        delay(1000);
-        Utils::reboot();
+        return;
     }
+    delay(1000);
+    Utils::reboot();
 }
 
 /**
