@@ -8,12 +8,9 @@ class LocalProcessor : public Processor
 {
 private:
     const bool HAS_HEARTBEAT = true;
-    /**
-     * We send to different events to load balanance
-     */
     const char *SEND_EVENT_NAME = "Hy/Post/Black";
-    const char *SEND_EVENT_MAINTENANCE = "HY/Post/Maintain";
-    const char *SEND_EVENT_HEARTBEAT = "HY/Post/Heartbeat";
+    const char *SEND_EVENT_MAINTENANCE = "Hy/Post/Maintain";
+    const char *SEND_EVENT_HEARTBEAT = "Hy/Post/Heartbeat";
     void manageManualModel();
     const bool MANUAL_MODE = false;
 
@@ -21,6 +18,8 @@ public:
     ~LocalProcessor();
     LocalProcessor();
     Utils utils;
+    unsigned long aliveTimestamp = 0;
+    const unsigned long PRINT_TIMEOUT = 60000;
     bool hasHeartbeat();
     String primaryPostName();
     static void parseMessage(String data, char *topic);
@@ -30,10 +29,13 @@ public:
     void disconnect();
     bool isConnected();
     bool init();
+    bool ready();
     void loop();
+    void maintain() {}
     bool publish(const char *topic, const char *payload);
     bool publish(String, String);
     bool publish(const char *topic, String);
+    bool unsubscribe(const char *);
     bool subscribe(const char *topic, std::function<void(const char *, const char *)> callback);
 };
 

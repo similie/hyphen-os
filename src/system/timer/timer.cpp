@@ -6,6 +6,7 @@ SystemTimer::SystemTimer(unsigned long period, void (*callback)()) : SystemTimer
 
 SystemTimer::SystemTimer(const unsigned int period, void (*callback)()) : SystemTimer((unsigned long)period, callback, true) {};
 
+SystemTimer::SystemTimer(void (*callback)()) : _callback(callback) {}
 // SystemTimer::SystemTimer(unsigned long period, void (*callback)()) : SystemTimer(period, callback, true) {}
 
 void SystemTimer::reset()

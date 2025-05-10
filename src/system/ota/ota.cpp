@@ -22,30 +22,31 @@ void OTAUpdate::onMQTTMessage(const char *topic, const char *payload)
     deserializeJson(doc, message);
     // we will send json to the client for update
     const char *firmwareUrl = doc["url"];
+    const char *host = doc["host"];
+    if (!host || !firmwareUrl)
+    {
+        return;
+    }
+
     uint16_t port = doc["port"];
 
-    downloadAndUpdate(firmwareUrl, port);
+    downloadAndUpdate(host, firmwareUrl, port);
 }
 
-Client &OTAUpdate::getClient(const char *firmwareUrl)
+Client &OTAUpdate::getClient(uint16_t port)
 {
-    String url = String(firmwareUrl);
-    int protocolEnd = url.indexOf("://");
-    String protocol = url.substring(0, protocolEnd);
-    if (protocol == "http")
+    if (port != 443)
     {
         return Hyphen.hyConnect().getClient();
     }
-
-    SSLClient sslClient;
     sslClient.setClient(&Hyphen.hyConnect().getClient());
     return sslClient;
 }
 
-void OTAUpdate::downloadAndUpdate(const char *firmwareUrl, uint16_t port)
+void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, uint16_t port)
 {
-    Client &client = Hyphen.hyConnect().getClient();
-    HttpClient http = HttpClient(getClient(firmwareUrl), firmwareUrl, port);
+    Client &client = getClient(port);
+    HttpClient http = HttpClient(client, host, port);
     http.get(firmwareUrl);
     int statusCode = http.responseStatusCode();
     if (statusCode != 200)

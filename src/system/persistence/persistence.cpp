@@ -7,6 +7,12 @@ bool Persistence::begin()
     return preferences.begin(namespaceName, false);
 }
 
+bool Persistence::begin(const char *namespaceName)
+{
+    this->namespaceName = namespaceName;
+    return preferences.begin(namespaceName, false);
+}
+
 void Persistence::end()
 {
     preferences.end();

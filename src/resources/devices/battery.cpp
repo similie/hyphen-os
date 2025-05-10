@@ -60,22 +60,40 @@ void Battery::restoreDefaults()
 void Battery::publish(JsonObject &writer, uint8_t attempt_count)
 {
     writer[percentname] = round(getNormalizedSoC());
-    writer[voltsname] = getVCell();
+    writer[voltsname] = getAvgRead();
+    writer[pow] = FuelGauge.getPower_mW();
+    writer[current] = FuelGauge.getCurrent_mA();
+    writer[solarVolts] = FuelGauge.getSolarVCell();
+    clear();
 }
 
 float Battery::getNormalizedSoC()
 {
-    return fuel.getNormalizedSoC();
+    return FuelGauge.getNormalizedSoC();
 }
 
 inline float Battery::batteryCharge()
 {
-    return 0.0f;
+    return getNormalizedSoC();
 }
 
 float Battery::getVCell()
 {
-    return fuel.getVCell();
+    return FuelGauge.getVCell();
+}
+
+float Battery::getAvgRead()
+{
+    if (readCount == 0)
+    {
+        return getVCell();
+    }
+
+    unsigned int averageValues = batteryValue / readCount;
+    float value = averageValues / 100.0;
+    char buf[10];
+    dtostrf(value, 6, 2, buf);
+    return atof(buf);
 }
 
 /**
@@ -89,6 +107,9 @@ float Battery::getVCell()
  */
 void Battery::read()
 {
+    // readCount++;
+    // float val = getVCell();
+    // batteryValue += (int)(val * 100);
 }
 
 /**
@@ -115,6 +136,8 @@ void Battery::loop()
  */
 void Battery::clear()
 {
+    readCount = 0;
+    batteryValue = 0;
 }
 
 /**
@@ -154,7 +177,7 @@ void Battery::init()
  */
 size_t Battery::buffSize()
 {
-    return 80;
+    return 100;
 }
 
 /**

@@ -4,6 +4,10 @@ static bool publishHeartbeat = false;
 static bool readReleased = false;
 static bool publishReleased = false;
 static bool staticBootstrapped = false;
+static bool printMemoryReady = false;
+static bool timeCheck = false;
+static bool lowPowerReady = false;
+static bool releaseOffline = false;
 // for memory debugging
 static uint32_t freememLast = 0;
 /**
@@ -36,6 +40,10 @@ void releasePublishRead()
  */
 void releaseHeartbeat()
 {
+    if (!Hyphen.isOnline())
+    {
+        return;
+    }
     publishHeartbeat = true;
 }
 
@@ -47,11 +55,22 @@ void releaseHeartbeat()
  */
 void printMemory()
 {
-    // uint32_t freemem = System.freeMemory();
-    // int delta = (int)freememLast - (int)freemem;
-    // // Serial.println(String::format("current %lu, last %lu, delta %d", freemem, freememLast, delta));
-    // Utils::log("MEMORY CHANGE", String::format("current %lu, last %lu, delta %d", freemem, freememLast, delta));
-    // freememLast = freemem;
+    printMemoryReady = true;
+}
+
+void checkSystemTime()
+{
+    timeCheck = true;
+}
+
+void releaseLowPower()
+{
+    lowPowerReady = true;
+}
+
+void releaseOfflineMode()
+{
+    releaseOffline = true;
 }
 
 #ifndef TIMERBUILD
@@ -60,7 +79,14 @@ void printMemory()
 SystemTimer publishtimer(Constants::ONE_MINUTE, releasePublishRead);
 SystemTimer readtimer(Constants::ONE_MINUTE, releaseRead);
 SystemTimer heartBeatTimer(Constants::HEARTBEAT_TIMER, releaseHeartbeat);
-// Timer memoryPrinter(10000, printMemory);
+SystemTimer offlineCheckTimer(Constants::OFFLINE_CHECK_INTERVAL, releaseOfflineMode);
+SystemTimer lowPowerTimer(releaseLowPower);
+#ifdef HYPHEN_THREADED
+SystemTimer timeSync(5000U, checkSystemTime);
+#endif
+#ifdef PRINT_MEMORY
+SystemTimer memoryPrinter(10000U, printMemory);
+#endif
 #endif
 
 /**
@@ -87,10 +113,18 @@ void Bootstrap::init()
     Hyphen.keepAlive(30);
     bootstrap();
     applyTimeZone();
+#ifdef HYPHEN_THREADED
+    Hyphen.setSubscriptions();
+    timeCheckPoll();
+
+#else
+    // non-threaded: do it immediately
     Hyphen.syncTime();
+#endif
     Hyphen.variable("publicationInterval", &publishedInterval);
     Hyphen.variable("batterySleepThreshold", &batterySleepThresholdValue);
     Hyphen.variable("timezone", &localTimezone);
+    Hyphen.variable("lowPowerMode", &lowPowerMode);
 }
 
 /**
@@ -112,6 +146,35 @@ void Bootstrap::storeDevice(String device, int index)
     Utils::machineNameDirect(device, config.device);
     uint16_t address = deviceConfigAddresses[index];
     Persist.put(address, config);
+}
+
+// void printHeapStats()
+// {
+//     size_t freeInternal = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+//     size_t freePsram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+
+//     Serial.printf(
+//         "Heap free: internal=%u bytes, PSRAM=%u bytes\n",
+//         (unsigned)freeInternal,
+//         (unsigned)freePsram);
+// }
+
+void Bootstrap::printMem()
+{
+    printMemoryReady = false;
+    uint32_t freemem = ESP.getFreeHeap();
+    int delta = (int)freememLast - (int)freemem;
+    char buffer[60];
+
+    // GPSData location = Hyphen.getLocation();
+    // sprintf(buffer, "lat: %f, lon: %f", location.lat, location.lon);
+    // Utils::log("LOCATION", String(buffer));
+
+    sprintf(buffer, "total %lu, current %lu, last %lu, delta %d", ESP.getHeapSize(), freemem, freememLast, delta);
+    Utils::log("MEMORY CHANGE", String(buffer));
+    freememLast = freemem;
+    // Hyphen.hyConnect().printCore1StackUsage();
+    // printHeapStats();
 }
 
 /**
@@ -169,6 +232,14 @@ void Bootstrap::sendBatteryValueToConfig(double val)
     putSavedConfig(config);
 }
 
+void Bootstrap::sendLowPowerModeToConfig(int val)
+{
+    EpromStruct config = getsavedConfig();
+    config.lowPowerMode = val;
+    lowPowerMode = val;
+    putSavedConfig(config);
+}
+
 /*
  * @private sendTimezoneValueToConfig:
  *
@@ -216,6 +287,13 @@ void Bootstrap::applyTimeZone()
     Time.zone(localTimezone);
 }
 
+int Bootstrap::setLowPowerMode(String read)
+{
+    int val = Utils::parseCloudFunctionInteger(read, "setLowPowerMode");
+    sendLowPowerModeToConfig(val);
+    return val;
+}
+
 int Bootstrap::setTimeZone(String read)
 {
 
@@ -246,6 +324,7 @@ void Bootstrap::setFunctions()
     Hyphen.function("setMaintenanceMode", &Bootstrap::setMaintenanceMode, this);
     Hyphen.function("setBatterySleepThreshold", &Bootstrap::setBatterySleepThreshold, this);
     Hyphen.function("setTimezone", &Bootstrap::setTimeZone, this);
+    Hyphen.function("setLowPowerMode", &Bootstrap::setLowPowerMode, this);
 }
 
 /**
@@ -540,6 +619,16 @@ void Bootstrap::setMaintenance(bool maintain)
     this->maintenaceMode = maintain;
 }
 
+bool Bootstrap::checkOfflineReady()
+{
+    return releaseOffline && Time.isSynced();
+}
+
+void Bootstrap::resetOfflineCheck()
+{
+    releaseOffline = false;
+}
+
 /**
  * @public publishTimerFunc
  *
@@ -549,6 +638,70 @@ void Bootstrap::setMaintenance(bool maintain)
 bool Bootstrap::publishTimerFunc()
 {
     return publishReleased;
+}
+
+bool Bootstrap::printMemoryFunc()
+{
+    return printMemoryReady;
+}
+
+bool Bootstrap::isTimerUpdateReady()
+{
+    return timeCheck && !Time.isSynced();
+}
+
+void Bootstrap::applyLowPowerMode(int minutes)
+{
+    if (minutes <= 0)
+    {
+        return;
+    }
+    unsigned long miliseconds = minutes * 60 * 1000;
+    lowPowerReady = false;
+    lowPowerTimer.stop();
+    lowPowerTimer.changePeriod(miliseconds);
+    lowPowerTimer.start();
+}
+
+int Bootstrap::getLowPowerModeTime()
+{
+    return lowPowerMode;
+}
+bool Bootstrap::lowPowerCheck()
+{
+    return lowPowerReady;
+}
+void Bootstrap::resetPowerCheck()
+{
+    lowPowerReady = false;
+    lowPowerTimer.stop();
+}
+
+void Bootstrap::endTimerCheck()
+{
+    timeCheck = false;
+#ifdef HYPHEN_THREADED
+    timeSync.stop();
+#endif
+}
+
+void Bootstrap::timeCheckPoll()
+{
+    timeCheck = false;
+    if (Time.isSynced())
+    {
+        return endTimerCheck();
+    }
+    if (!Hyphen.connected())
+    {
+        return;
+    }
+    endTimerCheck();
+    Hyphen.requestTime();
+#ifdef HYPHEN_THREADED
+    coreDelay(5000);
+    timeSync.start();
+#endif
 }
 
 /**
@@ -728,8 +881,7 @@ EpromStruct Bootstrap::getsavedConfig()
     Persist.get((uint16_t)EPROM_ADDRESS, values);
     if (values.version != 1)
     {
-        EpromStruct defObject = {1, 1, TIMEZONE, 0};
-        values = defObject;
+        values = {1, 1, TIMEZONE, 0, lowPowerMode};
     }
     return values;
 }
@@ -765,6 +917,12 @@ void Bootstrap::bootstrap()
         localTimezone = values.timezone;
         applyTimeZone();
     }
+
+    if (Utils::validConfigIdentity(values.version))
+    {
+        lowPowerMode = values.lowPowerMode;
+    }
+
     bootstrapped = true;
     staticBootstrapped = true;
 }
@@ -779,7 +937,7 @@ void Bootstrap::restoreDefaults()
 {
     // Persist.clear();
     buildSendInterval(DEFAULT_PUB_INTERVAL);
-    EpromStruct defObject = {1, publicationIntervalInMinutes, TIMEZONE, 0};
+    EpromStruct defObject = {1, publicationIntervalInMinutes, TIMEZONE, 0, lowPowerMode};
     putSavedConfig(defObject);
 }
 
@@ -810,6 +968,25 @@ void Bootstrap::timers()
     {
         heartBeatTimer.start();
     }
+
+    if (!offlineCheckTimer.isActive())
+    {
+        offlineCheckTimer.start();
+    }
+#ifdef PRINT_MEMORY
+    if (!memoryPrinter.isActive())
+    {
+        memoryPrinter.start();
+    }
+#endif
+
+#ifdef HYPHEN_THREADED
+    if (!timeSync.isActive())
+    {
+        timeSync.start();
+    }
+
+#endif
 }
 /**
  * @public

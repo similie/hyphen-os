@@ -4,6 +4,7 @@
 #include "resources/bootstrap/bootstrap.h"
 #include "resources/processors/LocalProcessor.h"
 #include "resources/utils/utils.h"
+#include "resources/utils/store.h"
 #include "resources/utils/configurator.h"
 #include "resources/heartbeat/heartbeat.h"
 #include "device.h"
@@ -34,21 +35,40 @@
 #define DEVICES_AT_MAX -2
 #define DEVICES_VIOLATES_RULES -3
 
+#ifndef AUTO_LOW_POWER_MODE_INTERVAL
+#define AUTO_LOW_POWER_MODE_INTERVAL 20
+#endif
+
 const size_t DEVICE_COUNT = 5;
 const size_t DEVICE_AGGR_COUNT = SEVEN;
-
+// Ticker     _keepAliveTicker;
 class DeviceManager
 {
 private:
+    PayloadStore storage;
     bool publishBusy = false;
     bool readBusy = false;
     bool rebootEvent = false;
+    int lowPowerMode = 0;
+    bool lowPowerModeSet = false;
+    int storedRecords = 0;
+    void offlineModeCheck();
+    void radioUp();
+    void radioDown(int);
+    void autoLowPowerMode();
+    void toggleRadio(int);
     void process();
-    const char *AI_DEVICE_LIST_EVENT = "Ai/Get/Devices";
+    void threadedPublish();
+    int publisherThreadTask = 4096;
+    TaskHandle_t taskHandle = nullptr;
+    static void taskEntry(void *pv);
+    const char *AI_DEVICE_LIST_EVENT = "Hy/Get/Devices";
     unsigned int read_count = 0;
     uint8_t attempt_count = 0;
     Configurator config;
     void strapDevices();
+    void runOfflineCheck();
+    void maintenanceCallback();
     int applyDevice(Device *device, String deviceString, bool startup);
     // this value is the payload values size. We capture the other
     // values at initialization from the selected devices
@@ -70,6 +90,7 @@ private:
     void shuffleLoad(String payloadString);
     void placePayload(String payload);
     void popOfflineCollection();
+
     void confirmationExpiredCheck();
     void read();
     void publish();
@@ -108,6 +129,9 @@ private:
     int removeDevice(String value);
     int showDevices(String value);
     int clearAllDevices(String value);
+    int setWifi(String value);
+    int setApn(String value);
+    int setSimPin(String value);
 
     void setParamsCount();
     bool waitForTrue(bool (DeviceManager::*func)(), DeviceManager *binding, unsigned long time);

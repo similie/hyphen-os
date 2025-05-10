@@ -1,11 +1,12 @@
 
 #ifndef bootstrap_h
 #define bootstrap_h
-
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "Hyphen.h"
 #include "resources/utils/battery.h"
 #include "resources/utils/utils.h"
-
+#define PRINT_MEMORY 1
 #define STORAGE_SIZE 8197
 static const int TIMEZONE = TIMEZONE_SET;
 
@@ -36,9 +37,10 @@ struct EpromStruct
     uint8_t pub;
     int timezone;
     double sleep;
+    int lowPowerMode;
 };
 
-struct BeachStruct
+struct MetaStruct
 {
     uint8_t version;
     uint8_t count;
@@ -47,11 +49,16 @@ struct BeachStruct
 class Bootstrap
 {
 private:
+    TaskHandle_t timeSyncHandle = nullptr;
     int localTimezone = TIMEZONE;
     bool bootstrapped = false;
     uint8_t publicationIntervalInMinutes = DEFAULT_PUB_INTERVAL;
     double batterySleepThresholdValue = 0;
+
     int publishedInterval = DEFAULT_PUB_INTERVAL;
+    int lowPowerMode = 0;
+    int lowPowerBeat = 1;
+
     String processorName = "";
     bool validTimezone(int);
     void applyTimeZone();
@@ -88,7 +95,7 @@ private:
     // BEACH Storage
     static const uint16_t START_ADDRESS = sizeof(EpromStruct) + 8;
     // Device Meta Storage
-    const uint16_t DEVICE_META_ADDRESS = START_ADDRESS + sizeof(BeachStruct) + 8;
+    const uint16_t DEVICE_META_ADDRESS = START_ADDRESS + sizeof(MetaStruct) + 8;
     // Stores count details
     const uint16_t DEVICE_CONFIG_STORAGE_META_ADDRESS = DEVICE_META_ADDRESS + sizeof(DeviceMetaStruct) + 8;
     // Device Type Storage
@@ -112,6 +119,8 @@ public:
     void resumePublication();
     void restoreDefaults();
     void setPublishTimer(bool);
+    bool isTimerUpdateReady();
+    void endTimerCheck();
     void setHeartbeatTimer(bool);
     void setReadTimer(bool);
     void buildSendInterval(int);
@@ -121,13 +130,25 @@ public:
     bool publishTimerFunc();
     bool heartbeatTimerFunc();
     bool readTimerFun();
+    bool printMemoryFunc();
+    void printMem();
+    bool checkOfflineReady();
+    void resetOfflineCheck();
+    bool lowPowerCheck();
+    void resetPowerCheck();
+    int setLowPowerMode(String);
+    void applyLowPowerMode(int);
+    void sendLowPowerModeToConfig(int);
+    int getLowPowerModeTime();
 
+    void timeCheckPoll();
     unsigned int getReadTime();
     unsigned int getPublishTime();
     uint16_t registerAddress(String, uint16_t);
     static size_t storageSize();
     size_t getMaxVal();
     String removeNewLine(String value);
+    // static void syncTimeTask(void *param);
 };
 
 #endif

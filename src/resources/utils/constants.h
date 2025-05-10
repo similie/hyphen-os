@@ -28,6 +28,7 @@ public:
     static const unsigned int ONE_MINUTE = 1 * MILLISECOND * MINUTE_IN_SECONDS;
     static const size_t OVERFLOW_VAL = MAX_SEND_TIME + 5;
     static const unsigned int HEARTBEAT_TIMER = MILLISECOND * MINUTE_IN_SECONDS * 15;
+    static const unsigned int OFFLINE_CHECK_INTERVAL = MILLISECOND * 11;
 };
 
 #endif
