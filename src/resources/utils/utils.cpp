@@ -254,7 +254,10 @@ void Utils::logToFile(String log)
     {
         return;
     }
-    uint32_t size = Storage.appendln(String(LOG_FILE_NAME), log);
+
+    // Storage.appendlnAsync(String(LOG_FILE_NAME), log, MAX_LOG_SIZE);
+
+    uint64_t size = Storage.appendln(String(LOG_FILE_NAME), log);
     if (size > MAX_LOG_SIZE)
     {
         Storage.overwrite(LOG_FILE_NAME, "");

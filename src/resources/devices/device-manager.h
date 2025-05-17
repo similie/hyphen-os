@@ -58,10 +58,10 @@ private:
     void autoLowPowerMode();
     void toggleRadio(int);
     void process();
-    void threadedPublish();
+    // void threadedPublish();
     int publisherThreadTask = 4096;
     TaskHandle_t taskHandle = nullptr;
-    static void taskEntry(void *pv);
+    // static void taskEntry(void *pv);
     const char *AI_DEVICE_LIST_EVENT = "Hy/Get/Devices";
     unsigned int read_count = 0;
     uint8_t attempt_count = 0;

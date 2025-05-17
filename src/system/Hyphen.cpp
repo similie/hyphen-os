@@ -1,10 +1,16 @@
 #include "Hyphen.h"
 
-HyphenClass::HyphenClass() : hyphen(ConnectionType::CELLULAR_PREFERRED)
+HyphenClass::HyphenClass() : hyphen(ConnectionType::CELLULAR_ONLY)
 {
 }
 void HyphenClass::process()
 {
+
+    if (unsubscribeTimeConfig)
+    {
+        unsubscribeTimeConfig = false;
+        hyphen.unsubscribe(timeConfigTopic.c_str());
+    }
     return hyphen.loop();
 }
 bool HyphenClass::keepAlive(uint8_t keepAlive)
@@ -47,10 +53,13 @@ void HyphenClass::setSubscriptions()
 {
     hyphen.subscribe(timeConfigTopic.c_str(), [this](const char *topic, const char *payload)
                      {
+                        // if (Time.isSynced()) {
+                        //     return;
+                        // }
                          Log.infoln("Time config topic: %s", topic);
                          Log.infoln("Time config payload: %s", payload);
                          if(Time.parseMessage(payload)) {
-                            hyphen.unsubscribe(topic); 
+                            unsubscribeTimeConfig = true;
                          } });
 }
 void HyphenClass::variable(const char *name, int *variable)

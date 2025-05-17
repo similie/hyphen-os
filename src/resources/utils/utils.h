@@ -13,7 +13,7 @@ class Utils
 {
 private:
     static const bool LOG_TO_FILE = true;
-    static const uint32_t MAX_LOG_SIZE = 1000000;
+    static const uint64_t MAX_LOG_SIZE = 1000000;
     String removeSensorIdFromPayload(String);
 
     bool notStopCheckChar(char);

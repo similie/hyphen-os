@@ -153,9 +153,9 @@ void LocalProcessor::parseMessage(String data, char *topic)
  */
 void LocalProcessor::loop()
 {
-#ifndef HYPHEN_THREADED
+    // #ifndef HYPHEN_THREADED
     Hyphen.process();
-#endif
+    // #endif
 }
 
 /**

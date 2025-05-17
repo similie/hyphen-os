@@ -696,11 +696,11 @@ void Bootstrap::timeCheckPoll()
     {
         return;
     }
-    endTimerCheck();
+    // endTimerCheck();
     Hyphen.requestTime();
 #ifdef HYPHEN_THREADED
-    coreDelay(5000);
-    timeSync.start();
+    // coreDelay(5000);
+    // timeSync.start();
 #endif
 }
 

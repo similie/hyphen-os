@@ -205,5 +205,7 @@ uint8_t Battery::paramCount()
  */
 uint8_t Battery::maintenanceCount()
 {
-    return 0;
+    uint8_t count = maintenanceTicker;
+    maintenanceTicker = 0;
+    return count;
 }

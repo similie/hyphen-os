@@ -10,8 +10,9 @@ bool PayloadStore::push(String topic, String payload)
     {
         return false;
     }
-    uint32_t addPosition = Storage.appendln(storeFile, sanitize(topic + "|" + payload));
+    uint64_t addPosition = Storage.appendln(storeFile, sanitize(topic + "|" + payload));
     return addPosition > 0;
+    // return Storage.appendlnAsync(storeFile, sanitize(topic + "|" + payload));
 }
 
 void PayloadStore::resetStorageFile()

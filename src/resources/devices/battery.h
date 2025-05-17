@@ -19,6 +19,7 @@ private:
     const uint8_t PARAM_LENGTH = 5;
     String deviceName = "Battery";
     uint8_t readCount = 0;
+    uint8_t maintenanceTicker = 0;
     unsigned int batteryValue = 0;
     float getAvgRead();
 

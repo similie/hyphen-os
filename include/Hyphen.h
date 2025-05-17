@@ -22,6 +22,7 @@ private: // Map to store function names and corresponding std::function objects
     HyphenConnect hyphen;
     String timeConfigTopic = String(MQTT_TOPIC_BASE) + "Config/" + thisDeviceId + "/Time";
     String timeConfigRequestTopic = String(MQTT_TOPIC_BASE) + "Config/Time";
+    bool unsubscribeTimeConfig = false;
 
 public:
     HyphenClass();

@@ -162,9 +162,7 @@ void DeviceManager::setReadCount(unsigned int read_count)
  */
 bool DeviceManager::recommendedMaintence(uint8_t damageCount)
 {
-    long time = Time.now();
-    const long THRESHOLD = 1600000000;
-    if (time < THRESHOLD)
+    if (!Time.isSynced())
     {
         return true;
     }
@@ -386,8 +384,7 @@ void DeviceManager::storePayload(String payload, String topic)
     if (this->storage.push(topic, payload))
     {
         storedRecords++;
-        Utils::log("STORED_PAYLOAD", String(storedRecords));
-        return;
+        return Utils::log("STORED_PAYLOAD", String(storedRecords));
     }
     Utils::log("ERROR_STORING_PAYLOAD", payload);
 }
@@ -408,7 +405,7 @@ void DeviceManager::heartbeat()
     }
     String artery = blood->pump();
     Utils::log("SENDING_HEARTBEAT", artery);
-    processor->publish(processor->getHeartbeatTopic(), artery.c_str());
+    processor->publish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
 }
 
 /**
@@ -433,16 +430,16 @@ void DeviceManager::read()
     Utils::log("READ_EVENT", "READCOUNT=" + String(read_count));
 }
 
-void DeviceManager::threadedPublish()
-{
-    xTaskCreatePinnedToCore(&DeviceManager::taskEntry,
-                            "HyphenPublisher",
-                            publisherThreadTask,
-                            this,
-                            tskIDLE_PRIORITY + 1,
-                            &taskHandle,
-                            0);
-}
+// void DeviceManager::threadedPublish()
+// {
+//     xTaskCreatePinnedToCore(&DeviceManager::taskEntry,
+//                             "HyphenPublisher",
+//                             publisherThreadTask,
+//                             this,
+//                             tskIDLE_PRIORITY + 1,
+//                             &taskHandle,
+//                             0);
+// }
 
 /**
  * @private
@@ -577,6 +574,7 @@ String DeviceManager::payloadWriter(uint8_t &maintenanceCount)
     }
     String output;
     serializeJson(doc, output);
+    Utils::log("MAINTENANCE_COUNT", StringFormat("%s", String(maintenanceCount)));
     // Serial.println(output);
     return output;
 }
@@ -638,12 +636,12 @@ void DeviceManager::autoLowPowerMode()
     toggleRadio(powerDownTimeInMinutes);
 }
 
-void DeviceManager::taskEntry(void *pv)
-{
-    UBaseType_t highwater = uxTaskGetStackHighWaterMark(NULL);
-    Serial.printf("Publisher task stack highwater marks = %u words\n", (unsigned)highwater);
-    static_cast<DeviceManager *>(pv)->publisher();
-}
+// void DeviceManager::taskEntry(void *pv)
+// {
+//     UBaseType_t highwater = uxTaskGetStackHighWaterMark(NULL);
+//     Serial.printf("Publisher task stack highwater marks = %u words\n", (unsigned)highwater);
+//     static_cast<DeviceManager *>(pv)->publisher();
+// }
 
 void DeviceManager::offlineModeCheck()
 {
@@ -706,11 +704,11 @@ void DeviceManager::publisher()
     ROTATION++;
     offlineModeCheck();
     publishBusy = false;
-    if (taskHandle)
-    {
-        vTaskDelete(NULL);
-        taskHandle = nullptr;
-    }
+    // if (taskHandle)
+    // {
+    //     vTaskDelete(NULL);
+    //     taskHandle = nullptr;
+    // }
 }
 
 /**
