@@ -76,6 +76,8 @@ public:
     void process();
     void reset();
     bool publish(String, String);
+    bool publish(const char *, uint8_t *, size_t);
+    bool compressPublish(String topic, String payload);
     HyphenConnect &hyConnect();
     void requestTime();
     void setSubscriptions();

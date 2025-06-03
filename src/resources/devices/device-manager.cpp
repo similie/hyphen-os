@@ -313,6 +313,7 @@ void DeviceManager::processTimers()
 void DeviceManager::runOfflineCheck()
 {
     boots.resetOfflineCheck();
+    // Serial.printf("Checking offline data %d %d \n");
     // it's not a perfect world, so we allow it to be negative
     // if we didn't account for the correct number of records
     if (lowPowerModeSet || storedRecords <= 0 || !isNotPublishing() || !processor->ready())
@@ -405,7 +406,11 @@ void DeviceManager::heartbeat()
     }
     String artery = blood->pump();
     Utils::log("SENDING_HEARTBEAT", artery);
+#ifdef COMPRESSED_PUBLISH
+    processor->compressPublish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
+#else
     processor->publish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
+#endif
 }
 
 /**
@@ -430,17 +435,6 @@ void DeviceManager::read()
     Utils::log("READ_EVENT", "READCOUNT=" + String(read_count));
 }
 
-// void DeviceManager::threadedPublish()
-// {
-//     xTaskCreatePinnedToCore(&DeviceManager::taskEntry,
-//                             "HyphenPublisher",
-//                             publisherThreadTask,
-//                             this,
-//                             tskIDLE_PRIORITY + 1,
-//                             &taskHandle,
-//                             0);
-// }
-
 /**
  * @private
  *
@@ -463,17 +457,6 @@ void DeviceManager::publish()
     Utils::log("PUBLICATION_EVENT", "EVENT=" + processor->getPublishTopic(false));
     // waitFor(DeviceManager::isNotReading, 10000);
     publisher();
-    // threadedPublish();
-
-    // if (attempt_count < ATTEMPT_THRESHOLD)
-    // {
-    //     attempt_count++;
-    // }
-    // else
-    // {
-    //     Utils::log("ONLINE_FAILURE", StringFormat("OFFLINE COUNT %d", attempt_count));
-    //     attempt_count = 0;
-    // }
     read_count = 0;
 }
 
@@ -575,9 +558,9 @@ String DeviceManager::payloadWriter(uint8_t &maintenanceCount)
     String output;
     serializeJson(doc, output);
     Utils::log("MAINTENANCE_COUNT", StringFormat("%s", String(maintenanceCount)));
-    // Serial.println(output);
     return output;
 }
+
 void DeviceManager::toggleRadio(int lowPowerMode)
 {
     if (lowPowerMode == 0)
@@ -590,58 +573,82 @@ void DeviceManager::toggleRadio(int lowPowerMode)
         Utils::log("LOW_POWER_MODE", "radioUp");
         radioUp();
     }
-    else if (processor->ready() && !lowPowerModeSet && storedRecords <= 0)
+    else if (processor->ready() && !lowPowerModeSet && storedRecords <= 0 && lowPowerMode > 0)
     {
         Utils::log("LOW_POWER_MODE", "radioDown");
         storedRecords = 0;
         radioDown(lowPowerMode);
     }
 }
+
+float DeviceManager::solarPower()
+{
+    float solarV = 0;
+    for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
+    {
+        float volts = FuelGauge.getSolarVCell();
+        if (volts > solarV)
+        {
+            solarV = volts;
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    return solarV;
+}
+float DeviceManager::batteryPower()
+{
+    float batteryPct = 0;
+    for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
+    {
+        float pct = FuelGauge.getNormalizedSoC();
+        if (pct > batteryPct)
+        {
+            batteryPct = pct;
+        }
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+    return batteryPct;
+}
+
 void DeviceManager::autoLowPowerMode()
 {
     /*
-          Check power conditions to see if we can turn off the radio
-      */
-    // 1) read solar voltage and battery SoC
-    float solarV = FuelGauge.getSolarVCell();
-    float batteryPct = FuelGauge.getNormalizedSoC();
-    Utils::log("AUTO_LOW_POWER_MODE", "solarV=" + String(solarV) + ", batteryPct=" + String(batteryPct));
-    int powerDownTimeInMinutes;
-    // 2) if strong solar, stay always on
-    if (solarV >= 16.0f)
+     * Check power conditions to see if we can turn off the radio
+     */
+    int powerDownTimeInMinutes = lowPowerModeSet ? -1 : 0;
+    float solarV = solarPower();
+    Utils::log("AUTO_LOW_POWER_MODE", "solarV=" + String(solarV));
+    // 2) if strong solar or battery, stay always on
+    if (solarV >= 17.0f)
     {
-        powerDownTimeInMinutes = 0;
+        return toggleRadio(powerDownTimeInMinutes);
     }
-    else
+
+    float batteryPct = batteryPower();
+    Utils::log("AUTO_LOW_POWER_MODE", "batteryPct=" + String(batteryPct));
+
+    if (batteryPct > 80.0f)
     {
-        // 3) map battery % to 5 min off-intervals:
-        //     ≥80% → 0 min
-        //     ≥60% → 5 min
-        //     ≥40% → 10 min
-        //     ≥20% → 15 min
-        //      <20% → 20 min
-        if (batteryPct >= 80.0f)
-            powerDownTimeInMinutes = 0;
-        else if (batteryPct >= 60.0f)
-            powerDownTimeInMinutes = 5;
-        else if (batteryPct >= 40.0f)
-            powerDownTimeInMinutes = 10;
-        else if (batteryPct >= 20.0f)
-            powerDownTimeInMinutes = 15;
-        else
-            powerDownTimeInMinutes = 20;
+        return toggleRadio(powerDownTimeInMinutes);
     }
+
+    if (batteryPct <= 80.0f && batteryPct > 60.0f)
+        powerDownTimeInMinutes = 5;
+    else if (batteryPct <= 60.0f && batteryPct > 40.0f)
+        powerDownTimeInMinutes = 10;
+    else if (batteryPct <= 40.0f && batteryPct > 20.0f)
+        powerDownTimeInMinutes = 15;
+    else if (batteryPct <= 20.0f && batteryPct > 10.0f)
+        powerDownTimeInMinutes = 20;
+    else if (batteryPct <= 10.0f && batteryPct > 0.0f)
+        powerDownTimeInMinutes = 25;
+    else if (batteryPct <= 0.0f)
+        powerDownTimeInMinutes = 60; // if battery is dead, we can turn off the radio for 60 minutes
+
     Utils::log("AUTO_LOW_POWER_MODE", "powerDownTimeInMinutes=" + String(powerDownTimeInMinutes));
     // 4) toggle the radio off for that many minutes
     toggleRadio(powerDownTimeInMinutes);
 }
-
-// void DeviceManager::taskEntry(void *pv)
-// {
-//     UBaseType_t highwater = uxTaskGetStackHighWaterMark(NULL);
-//     Serial.printf("Publisher task stack highwater marks = %u words\n", (unsigned)highwater);
-//     static_cast<DeviceManager *>(pv)->publisher();
-// }
 
 void DeviceManager::offlineModeCheck()
 {
@@ -683,8 +690,13 @@ void DeviceManager::publisher()
 
     if (!lowPowerModeSet)
     {
+#ifdef COMPRESSED_PUBLISH
+        success = processor->compressPublish(topic, result);
+        Utils::log("PUBLISHING STATUS", String(success));
+#else
         success = processor->publish(topic, storage.sanitize(result));
         Utils::log("PUBLISHING STATUS", String(success));
+#endif
     }
 
     Utils::log("SENDING_EVENT_READY " + topic, String(((success == false || lowPowerModeSet) && !maintenance) ? "TRUE" : "FALSE"));
@@ -694,21 +706,10 @@ void DeviceManager::publisher()
         Utils::log("SENDING PAYLOAD FAILED. Storing", result);
         storePayload(result, topic);
     }
-
-    // else if (success)
-    // {
-    //     // coreDelay(1000);
-    //     popOfflineCollection();
-    // }
     clearArray();
     ROTATION++;
     offlineModeCheck();
     publishBusy = false;
-    // if (taskHandle)
-    // {
-    //     vTaskDelete(NULL);
-    //     taskHandle = nullptr;
-    // }
 }
 
 /**

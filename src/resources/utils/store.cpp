@@ -172,7 +172,13 @@ uint8_t PayloadStore::popOfflineCollection(uint8_t size, unsigned long delay)
         }
         Serial.printf("Topic: %s \n", topic.c_str());
         Serial.println("Sending offline payload: " + send);
-        if (Hyphen.publish(sanitize(topic), setStale(payload)))
+        if (
+#ifdef COMPRESSED_PUBLISH
+            Hyphen.compressPublish(sanitize(topic), setStale(payload))
+#else
+            Hyphen.publish(sanitize(topic), setStale(payload))
+#endif
+        )
         {
             Serial.println("Offline payload sent successfully");
             count++;

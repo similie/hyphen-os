@@ -1,15 +1,15 @@
 {
   "folders": [
-	{
-		"path": "."
-	},
-	{
-		"path": "../../../../Sites/hyphen"
-	},
-	{
-		"path": "../Test-Lilgo-T-PCIE"
-	}
-],
+    {
+      "path": "."
+    },
+    {
+      "path": "../../../../Sites/hyphen"
+    },
+    {
+      "path": "../Test-Lilgo-T-PCIE"
+    }
+  ],
   "settings": {
     "files.associations": {
       "*.tpp": "cpp",
@@ -76,7 +76,9 @@
       "mutex": "cpp",
       "thread": "cpp",
       "valarray": "cpp",
-      "variant": "cpp"
+      "variant": "cpp",
+      "__locale": "cpp",
+      "__verbose_abort": "cpp"
     }
   }
 }

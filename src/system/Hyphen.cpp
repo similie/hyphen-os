@@ -167,6 +167,27 @@ bool HyphenClass::publish(String topic, String payload)
 {
     return hyphen.publishTopic(topic, payload);
 }
+
+bool HyphenClass::publish(const char *topic, uint8_t *buf, size_t length)
+{
+    return hyphen.publishTopic(topic, buf, length);
+}
+
+bool HyphenClass::compressPublish(String topic, String payload)
+{
+    // mqttClient.publish_P
+    const size_t JSON_LEN = payload.length();
+    const size_t BUF_LEN = JSON_LEN + /*some extra*/ 16;
+    JsonDocument doc;
+    deserializeJson(doc, payload);
+    uint8_t *buf = new uint8_t[BUF_LEN];
+    size_t len = serializeMsgPack(doc.as<JsonVariantConst>(), buf, BUF_LEN);
+    Log.noticeln("Publishing to topic: %s, %s, size: %d of %d", topic.c_str(), payload.c_str(), len, JSON_LEN);
+    bool published = hyphen.publishTopic(topic.c_str(), buf, len);
+    delete[] buf;
+    return published;
+}
+
 HyphenConnect &HyphenClass::hyConnect()
 {
     return hyphen;

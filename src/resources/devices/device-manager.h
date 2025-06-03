@@ -58,10 +58,11 @@ private:
     void autoLowPowerMode();
     void toggleRadio(int);
     void process();
-    // void threadedPublish();
+    const uint8_t VOLTAGE_CHECK = 3; // seconds
+    float solarPower();
+    float batteryPower();
     int publisherThreadTask = 4096;
     TaskHandle_t taskHandle = nullptr;
-    // static void taskEntry(void *pv);
     const char *AI_DEVICE_LIST_EVENT = "Hy/Get/Devices";
     unsigned int read_count = 0;
     uint8_t attempt_count = 0;
@@ -70,10 +71,9 @@ private:
     void runOfflineCheck();
     void maintenanceCallback();
     int applyDevice(Device *device, String deviceString, bool startup);
+    bool compressPublish(String, String);
     // this value is the payload values size. We capture the other
     // values at initialization from the selected devices
-    // const size_t DEFAULT_BUFFER_SIZE = 120;
-    // const size_t DEFAULT_BUFFER_SIZE_MAX = (size_t)BUFF_SIZE;
     Bootstrap boots;
     LocalProcessor *processor;
     bool FRESH_START = false;
@@ -90,7 +90,6 @@ private:
     void shuffleLoad(String payloadString);
     void placePayload(String payload);
     void popOfflineCollection();
-
     void confirmationExpiredCheck();
     void read();
     void publish();
@@ -98,7 +97,6 @@ private:
     void manageManualModel();
     void heartbeat();
     void processTimers();
-    // size_t getBufferSize();
     void packagePayload(JsonDocument &writer);
     String devicesString[MAX_DEVICES];
     Device *devices[DEVICE_COUNT][DEVICE_AGGR_COUNT];

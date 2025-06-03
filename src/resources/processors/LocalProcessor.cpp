@@ -55,6 +55,11 @@ String LocalProcessor::getPublishTopic(bool maintenance)
     return String(this->SEND_EVENT_NAME);
 }
 
+bool LocalProcessor::compressPublish(String topic, String payload)
+{
+    return Hyphen.compressPublish(topic, payload);
+}
+
 /**
  * @public
  *
@@ -70,6 +75,12 @@ String LocalProcessor::getPublishTopic(bool maintenance)
 bool LocalProcessor::publish(const char *topic, const char *payload)
 {
     bool success = Hyphen.publish(topic, payload);
+    return success;
+}
+
+bool LocalProcessor::publish(const char *topic, uint8_t *buf, size_t size)
+{
+    bool success = Hyphen.publish(topic, buf, size);
     return success;
 }
 
