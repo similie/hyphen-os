@@ -583,31 +583,33 @@ void DeviceManager::toggleRadio(int lowPowerMode)
 
 float DeviceManager::solarPower()
 {
-    float solarV = 0;
-    for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
-    {
-        float volts = FuelGauge.getSolarVCell();
-        if (volts > solarV)
-        {
-            solarV = volts;
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-    return solarV;
+    return FuelGauge.getSolarVCell();
+    // float solarV = 0;
+    // for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
+    // {
+    //     float volts = FuelGauge.getSolarVCell();
+    //     if (volts > solarV)
+    //     {
+    //         solarV = volts;
+    //     }
+    //     vTaskDelay(pdMS_TO_TICKS(50));
+    // }
+    // return solarV;
 }
 float DeviceManager::batteryPower()
 {
-    float batteryPct = 0;
-    for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
-    {
-        float pct = FuelGauge.getNormalizedSoC();
-        if (pct > batteryPct)
-        {
-            batteryPct = pct;
-        }
-        vTaskDelay(pdMS_TO_TICKS(50));
-    }
-    return batteryPct;
+    return FuelGauge.getNormalizedSoC();
+    // float batteryPct = 0;
+    // for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
+    // {
+    //     float pct = FuelGauge.getNormalizedSoC();
+    //     if (pct > batteryPct)
+    //     {
+    //         batteryPct = pct;
+    //     }
+    //     vTaskDelay(pdMS_TO_TICKS(50));
+    // }
+    // return batteryPct;
 }
 
 void DeviceManager::autoLowPowerMode()

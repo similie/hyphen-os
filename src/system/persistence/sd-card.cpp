@@ -1,59 +1,71 @@
 // SDCard.cpp
 #include "system/sd-card.h"
 
-// Static members
 SemaphoreHandle_t SDCard::spiMutex = nullptr;
-QueueHandle_t SDCard::jobQueue = nullptr;
+SDCard *g_sdcardInstance = nullptr; // For ISR to reference
 
 SDCard::SDCard()
+    : _cardPresent(false),
+      _lastDebounce(0),
+      _pendingEvent(false)
 {
     // Create SPI mutex once
     if (!spiMutex)
     {
         spiMutex = xSemaphoreCreateMutex();
     }
-    // Create job queue and worker task once
-    if (!jobQueue)
-    {
-        jobQueue = xQueueCreate(JOB_QUEUE_LENGTH, sizeof(SDJob));
-        // xTaskCreatePinnedToCore(
-        //     workerTask, "SDWorker", 4096, nullptr, tskIDLE_PRIORITY + 1, nullptr, 1);
-    }
+
     pinMode(cdPin, INPUT_PULLUP);
+    // Record initial state
+    _cardPresent = (digitalRead(cdPin) == LOW);
+
+    // Register this instance globally so ISR can call it
+    g_sdcardInstance = this;
 }
 
 SDCard::~SDCard()
 {
-    // Nothing to clean up (tasks/queues live for app lifetime)
+    // Nothing to free
+}
+
+bool SDCard::sdCardPresent() const
+{
+    // If the card-detect switch is active-low:
+    return (digitalRead(cdPin) == LOW);
 }
 
 bool SDCard::guardedBegin()
 {
     xSemaphoreTake(spiMutex, portMAX_DELAY);
-    SPI.begin();
-    bool ok = sd.begin(chipSelect, SD_SCK_MHZ(18));
+    SPI.begin(); // Ensure SPI is powered up
+    bool ok = sd.begin(chipSelect, SD_SCK_MHZ(25));
     xSemaphoreGive(spiMutex);
     return ok;
 }
 
-bool SDCard::sdCardPresent()
-{
-    return digitalRead(cdPin) == LOW;
-}
-
 bool SDCard::init()
 {
+    // Called when you want to ensure SD.begin() is called once the card is present
     if (initialized)
         return true;
+
     if (!sdCardPresent())
         return false;
-    initialized = guardedBegin();
-    return initialized;
+
+    if (!guardedBegin())
+    {
+        initialized = false;
+        return false;
+    }
+
+    initialized = true;
+    return true;
 }
 
-bool SDCard::ready() const
+bool SDCard::ready()
 {
-    return digitalRead(cdPin) == LOW && initialized;
+    // True if card is inserted AND we have successfully called init()
+    return sdCardPresent() && initialized;
 }
 
 String SDCard::read(const String &path, unsigned long &startPoint, char terminatingChar)
@@ -61,6 +73,7 @@ String SDCard::read(const String &path, unsigned long &startPoint, char terminat
     String result;
     if (!init())
         return result;
+
     xSemaphoreTake(spiMutex, portMAX_DELAY);
     SdFile file;
     if (file.open(path.c_str(), O_READ) && file.seekSet(startPoint))
@@ -83,6 +96,7 @@ bool SDCard::overwrite(const char *path, const char *newContent)
 {
     if (!init())
         return false;
+
     xSemaphoreTake(spiMutex, portMAX_DELAY);
     SdFile file;
     bool ok = file.open(path, O_WRONLY | O_CREAT | O_TRUNC);
@@ -99,6 +113,7 @@ uint64_t SDCard::appendln(const String &path, const String &message)
 {
     if (!init())
         return 0;
+
     xSemaphoreTake(spiMutex, portMAX_DELAY);
     SdFile file;
     uint64_t size = 0;
@@ -111,6 +126,186 @@ uint64_t SDCard::appendln(const String &path, const String &message)
     xSemaphoreGive(spiMutex);
     return size;
 }
+
+void SDCard::bridgeSpi()
+{
+    if (!spiMutex)
+        return;
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+    SPI.begin();
+    SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
+    SPI.endTransaction();
+    xSemaphoreGive(spiMutex);
+}
+
+// -------------------------------------------------------------
+//  Card Detect ISR & Debounce Logic
+// -------------------------------------------------------------
+
+void IRAM_ATTR SDCard::cardDetectISR()
+{
+    // Very short work in ISR: read new pin state and set flag if changed
+    uint32_t now = xTaskGetTickCountFromISR();
+    bool current = (digitalRead(g_sdcardInstance->cdPin) == LOW);
+
+    // Simple debounce: ignore changes within 50 ms
+    if ((now - g_sdcardInstance->_lastDebounce) > (50 / portTICK_PERIOD_MS))
+    {
+        g_sdcardInstance->_lastDebounce = now;
+        g_sdcardInstance->_cardPresent = current;
+        g_sdcardInstance->_pendingEvent = true;
+    }
+    // else ignore bounce
+}
+
+void SDCard::beginCardDetectInterrupt()
+{
+    // Attach rising and falling edge on cdPin
+    // When card inserted, cdPin goes LOW; when removed, goes HIGH (assuming INPUT_PULLUP wiring)
+    attachInterrupt(digitalPinToInterrupt(cdPin), SDCard::cardDetectISR, CHANGE);
+}
+
+// Called periodically in non-ISR context to handle the event
+void SDCard::handleCardDetectEvent()
+{
+    if (!_pendingEvent)
+        return;
+
+    // Clear the flag
+    _pendingEvent = false;
+
+    if (_cardPresent)
+    {
+        // Card was just inserted
+        Serial.println("SD: Card Inserted → initializing...");
+        if (init())
+        {
+            Serial.println("SD: Initialization succeeded");
+        }
+        else
+        {
+            Serial.println("SD: Initialization failed");
+        }
+    }
+    else
+    {
+        // Card was just removed
+        Serial.println("SD: Card Removed → deinitializing...");
+        // If you want to clean up, close any open files:
+        // sd.closeAll();
+        initialized = false;
+    }
+}
+// // Static members
+// SemaphoreHandle_t SDCard::spiMutex = nullptr;
+// QueueHandle_t SDCard::jobQueue = nullptr;
+
+// SDCard::SDCard()
+// {
+//     // Create SPI mutex once
+//     if (!spiMutex)
+//     {
+//         spiMutex = xSemaphoreCreateMutex();
+//     }
+//     // Create job queue and worker task once
+//     if (!jobQueue)
+//     {
+//         jobQueue = xQueueCreate(JOB_QUEUE_LENGTH, sizeof(SDJob));
+//         // xTaskCreatePinnedToCore(
+//         //     workerTask, "SDWorker", 4096, nullptr, tskIDLE_PRIORITY + 1, nullptr, 1);
+//     }
+//     pinMode(cdPin, INPUT_PULLUP);
+// }
+
+// SDCard::~SDCard()
+// {
+//     // Nothing to clean up (tasks/queues live for app lifetime)
+// }
+
+// bool SDCard::guardedBegin()
+// {
+//     xSemaphoreTake(spiMutex, portMAX_DELAY);
+//     SPI.begin();
+//     bool ok = sd.begin(chipSelect, SD_SCK_MHZ(18));
+//     xSemaphoreGive(spiMutex);
+//     return ok;
+// }
+
+// bool SDCard::sdCardPresent()
+// {
+//     return digitalRead(cdPin) == LOW;
+// }
+
+// bool SDCard::init()
+// {
+//     if (initialized)
+//         return true;
+//     if (!sdCardPresent())
+//         return false;
+//     initialized = guardedBegin();
+//     return initialized;
+// }
+
+// bool SDCard::ready() const
+// {
+//     return digitalRead(cdPin) == LOW && initialized;
+// }
+
+// String SDCard::read(const String &path, unsigned long &startPoint, char terminatingChar)
+// {
+//     String result;
+//     if (!init())
+//         return result;
+//     xSemaphoreTake(spiMutex, portMAX_DELAY);
+//     SdFile file;
+//     if (file.open(path.c_str(), O_READ) && file.seekSet(startPoint))
+//     {
+//         int c;
+//         while ((c = file.read()) >= 0)
+//         {
+//             startPoint++;
+//             if (c == terminatingChar)
+//                 break;
+//             result += char(c);
+//         }
+//         file.close();
+//     }
+//     xSemaphoreGive(spiMutex);
+//     return result;
+// }
+
+// bool SDCard::overwrite(const char *path, const char *newContent)
+// {
+//     if (!init())
+//         return false;
+//     xSemaphoreTake(spiMutex, portMAX_DELAY);
+//     SdFile file;
+//     bool ok = file.open(path, O_WRONLY | O_CREAT | O_TRUNC);
+//     if (ok)
+//     {
+//         file.print(newContent);
+//         file.close();
+//     }
+//     xSemaphoreGive(spiMutex);
+//     return ok;
+// }
+
+// uint64_t SDCard::appendln(const String &path, const String &message)
+// {
+//     if (!init())
+//         return 0;
+//     xSemaphoreTake(spiMutex, portMAX_DELAY);
+//     SdFile file;
+//     uint64_t size = 0;
+//     if (file.open(path.c_str(), O_RDWR | O_CREAT | O_AT_END))
+//     {
+//         file.println(message);
+//         size = file.fileSize();
+//         file.close();
+//     }
+//     xSemaphoreGive(spiMutex);
+//     return size;
+// }
 
 // bool SDCard::appendlnAsync(const String &path, const String &message, uint64_t maxBytes)
 // {

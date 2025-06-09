@@ -138,9 +138,9 @@ void BluetoothManager::init(HyphenClass *hyphen)
     {
         return;
     }
-    started = true;
+    //  started = true;
 
-    attachInterrupt(digitalPinToInterrupt(SWITCH_PIN), BluetoothManager::staticSwitchISR, CHANGE);
+    // attachInterrupt(digitalPinToInterrupt(SWITCH_PIN), BluetoothManager::staticSwitchISR, CHANGE);
     Serial.println("BluetoothManager initialized. Switch interrupt attached.");
 }
 

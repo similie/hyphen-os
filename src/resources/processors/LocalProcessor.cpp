@@ -224,7 +224,6 @@ bool LocalProcessor::unsubscribe(const char *topic)
 bool LocalProcessor::init()
 {
     size_t count = 0;
-
 #ifdef HYPHEN_THREADED
     // 1) enqueue the setup exactly once
     if (!connect())

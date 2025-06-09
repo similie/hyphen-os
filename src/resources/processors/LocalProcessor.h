@@ -35,7 +35,7 @@ public:
     bool init();
     bool ready();
     void loop();
-    void maintain() {}
+    bool maintain() { return true; }
     bool publish(const char *topic, const char *payload);
     bool publish(String, String);
     bool publish(const char *topic, String);
