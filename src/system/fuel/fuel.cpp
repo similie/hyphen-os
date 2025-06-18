@@ -23,13 +23,38 @@ void FuelGaugeClass::init()
 
 uint8_t FuelGaugeClass::_detectCellCount(float v)
 {
+
     // midpoint thresholds: 1.5×4.2=6.3, 2.5×4.2=10.5
+    uint8_t count = 0;
     if (v < (_maxCellVoltage * 1.5f))
-        return 1;
+        count = 1;
     else if (v < (_maxCellVoltage * 2.5f))
-        return 2;
+        count = 2;
     else
-        return 3;
+        count = 3;
+
+    if (_cellCount <= 0 || _cellCount == count)
+    {
+        // if we already have a cell count, return it
+        _cellCount = count;
+        return count;
+    }
+    // we want to make sure we are not detecting random spikes
+    if (_cellCount != count && _countTick < 2)
+    {
+        // if we are still detecting, increment the tick
+        _countTick++;
+        Serial.printf("Detecting cell count: %d (tick %d)\n", count, _countTick);
+        return _cellCount;
+    }
+    else
+    {
+        // if we have detected the cell count, set it
+        _cellCount = count;
+        Serial.printf("Detected cell count: %d\n", _cellCount);
+        _countTick = 0; // reset the tick
+        return count;
+    }
 }
 
 float FuelGaugeClass::getSimulatedMaxVoltage(uint8_t cellCount)
@@ -67,9 +92,9 @@ void FuelGaugeClass::_loadCalibration(uint8_t cellCount)
     }
 }
 
-void FuelGaugeClass::_updateCalibration(float v)
+void FuelGaugeClass::_updateCalibration(float v, uint8_t cellCount)
 {
-    if (v > _maxVoltage)
+    if (v > _maxVoltage && v <= (_maxCellVoltage * cellCount))
     {
         _maxVoltage = v;
         persist.put(_storageKey, _maxVoltage);
@@ -80,7 +105,7 @@ float FuelGaugeClass::getVCell()
 {
     float maxV = ina219_battery.getBusVoltage_V();
     Serial.printf("getVCell: initial maxV = %.2f\n", maxV);
-    for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t i = 0; i < 0; i++)
     {
         float v = ina219_battery.getBusVoltage_V();
         if (v > maxV)
@@ -95,7 +120,7 @@ float FuelGaugeClass::getVCell()
 float FuelGaugeClass::getSolarVCell()
 {
     float maxV = ina219_solar.getBusVoltage_V();
-    for (uint8_t i = 0; i < 3; i++)
+    for (uint8_t i = 0; i < 2; i++)
     {
         float v = ina219_solar.getBusVoltage_V();
         if (v > maxV)
@@ -170,18 +195,18 @@ float FuelGaugeClass::getNormalizedSoC()
     // 1) read pack voltage
     float cellV = getVCell();
     uint8_t cells = _detectCellCount(cellV);
-    float packV = cellV * cells;
-    _updateCalibration(packV);
+    _updateCalibration(cellV, cells);
     float floorV = cells * _minCellVoltage;
-    float delta = _maxCellVoltage - _maxVoltage;
+    float ceilV = cells * _maxCellVoltage;
+    float delta = ceilV - _maxVoltage;
     // we are attempting to normalize the pack voltage
     float floorVAdj = floorV - abs(delta);
     float span = _maxVoltage - floorVAdj;
-    Serial.printf("getNormalizedSoC: packV=%.2f, floorV=%.2f, delta=%.2f, maxV=%.2f span=%.2f, cells=%d\n", packV, floorV, delta, _maxVoltage, span, cells);
+    Serial.printf("getNormalizedSoC: packV=%.2f, floorV=%.2f, delta=%.2f, maxV=%.2f span=%.2f, cells=%d\n", cellV, floorV, delta, _maxVoltage, span, cells);
     if (span <= 0)
         return 0.0f;
 
-    float pct = 100 - (((_maxVoltage - packV) / span) * 100.0f);
+    float pct = 100 - (((_maxVoltage - cellV) / span) * 100.0f);
     if (pct < 0)
         pct = 0;
     if (pct > 100)

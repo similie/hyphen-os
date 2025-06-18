@@ -36,6 +36,8 @@ public:
 
 private:
     // Detect how many cells in series (1–3)
+    uint8_t _cellCount = 0; // cached cell count
+    uint8_t _countTick = 0;
     uint8_t _detectCellCount(float packV);
     float simDelta = 0.2f;
     float getSimulatedMaxVoltage(uint8_t cellCount);
@@ -44,7 +46,7 @@ private:
     void _loadCalibration(uint8_t cellCount);
 
     // Update observed max if we ever see a higher voltage
-    void _updateCalibration(float packV);
+    void _updateCalibration(float packV, uint8_t cellCount);
 
     // Storage key based on cell count
     char _storageKey[20];

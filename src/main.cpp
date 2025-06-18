@@ -17,6 +17,21 @@ DeviceManager manager(&processor, DEBUGGER);
 #error "BUILD_TIMESTAMP not defined!"
 #endif
 
+#include <esp_heap_caps.h>
+#include "mbedtls/platform.h"
+
+// allocate from PSRAM (MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT)
+extern "C" void *esp_mbedtls_my_calloc(size_t nelem, size_t elsize)
+{
+  return heap_caps_calloc(nelem, elsize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+}
+
+// free back to PSRAM
+extern "C" void esp_mbedtls_my_free(void *p)
+{
+  heap_caps_free(p);
+}
+
 void initClockFromBuildTime()
 {
   // Build timestamp is in seconds since 1970
@@ -30,6 +45,8 @@ void initClockFromBuildTime()
 
 void setup()
 {
+  mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
+                                   esp_mbedtls_my_free);
   Serial.begin(115200);
   initClockFromBuildTime();
   // Install the GPIO ISR service
