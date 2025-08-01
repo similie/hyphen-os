@@ -5,3 +5,4 @@ TimeClass Time;
 Persistence Persist;
 SDCard Storage;
 BluetoothManager Blue;
+WatchdogClass Watchdog;

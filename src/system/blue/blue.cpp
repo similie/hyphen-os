@@ -128,7 +128,7 @@ BluetoothManager::BluetoothManager()
       _switchTriggered(false), _switchPressed(false), _pressStart(0)
 {
     _instance = this;
-    pinMode(SWITCH_PIN, INPUT_PULLUP);
+    pinMode(SWITCH_PIN, INPUT);
 }
 
 void BluetoothManager::init(HyphenClass *hyphen)

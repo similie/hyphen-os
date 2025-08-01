@@ -14,7 +14,7 @@ class HyphenClass;
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 // Pin and timing thresholds for the momentary switch.
-#define SWITCH_PIN 32
+#define SWITCH_PIN 34
 #define SHORT_PRESS_THRESHOLD 1000 // ms: short press (enable BLE)
 #define LONG_PRESS_THRESHOLD 2000  // ms: long press (disable BLE)
 // class HyphenClass;

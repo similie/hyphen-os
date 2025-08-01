@@ -133,6 +133,8 @@ class SDI12Device
 {
 protected:
     // SDI12 *sdi12;
+    const String DEVICE_IDENTITY_ADDRESS = "SDI12_DEVICE_IDENTITY_";
+    int randIdentity = -1;
     SDI12DeviceManager &manager = SDI12DeviceManager::getInstance();
     Bootstrap *boots;
     SDIParamElements *childElements;
@@ -162,6 +164,11 @@ protected:
     void runSingleSample();
     String getCmd();
     String readSDI();
+    void setupCloudFunctions();
+    int setAddress(String address);
+    void loadAddress();
+    String getIdentityKey();
+    String serialIdentity();
 
 public:
     ~SDI12Device();

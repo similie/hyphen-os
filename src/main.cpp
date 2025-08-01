@@ -1,13 +1,15 @@
 
 /*
  * Project hyphen-community
- * Description: A never fail basic runtime for our particle ESP32 devices
- * Author: Similie - Adam Smithee
+ * Description: A never fail basic runtime for our ESP32-based devices
+ * Author: Similie - Adam Smith
  * License: MIT
  * Date: Started 1 of November, 2024.
  */
 #include <Arduino.h>
 #include "resources/devices/device-manager.h"
+#include <esp_heap_caps.h>
+#include "mbedtls/platform.h"
 #define DEBUGGER true // set to false for field devices
 LocalProcessor processor;
 // MqttProcessor processor(&boots);
@@ -16,11 +18,6 @@ DeviceManager manager(&processor, DEBUGGER);
 #ifndef BUILD_TIMESTAMP
 #error "BUILD_TIMESTAMP not defined!"
 #endif
-
-#include <esp_heap_caps.h>
-#include "mbedtls/platform.h"
-
-// allocate from PSRAM (MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT)
 extern "C" void *esp_mbedtls_my_calloc(size_t nelem, size_t elsize)
 {
   return heap_caps_calloc(nelem, elsize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -47,6 +44,9 @@ void setup()
 {
   mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
                                    esp_mbedtls_my_free);
+  Watchdog.start();
+  delay(10000); // wait for the system to settle
+
   Serial.begin(115200);
   initClockFromBuildTime();
   // Install the GPIO ISR service

@@ -517,6 +517,51 @@ uint8_t SDI12Device::paramCount()
     return getElements()->getTotalSize();
 }
 
+void SDI12Device::setupCloudFunctions()
+{
+    Hyphen.function("setAddress" + sendIdentity, &SDI12Device::setAddress, this);
+    Hyphen.variable("getDeviceAddress" + sendIdentity, &sendIdentity);
+}
+int SDI12Device::setAddress(String address)
+{
+    int val = (int)atoi(address.c_str());
+    if (val == -1)
+    {
+        Utils::log("SDI12Device", "No identity set, cannot set address");
+        return -1;
+    }
+    String cmd = String(sendIdentity) + String("A") + String(val) + String("!");
+    String response = getWire(cmd);
+    Utils::log("SDI12_RESPONSE", response);
+    sendIdentity = val;
+    Utils::log("SDI12Device", "Setting identity to " + String(sendIdentity));
+    return val;
+    // Persist.put(getIdentityKey(), sendIdentity);
+}
+
+void SDI12Device::loadAddress()
+{
+    int identity = -1;
+    // Persist.get(getIdentityKey(), identity);
+}
+
+String SDI12Device::getIdentityKey()
+{
+    return DEVICE_IDENTITY_ADDRESS + String(sendIdentity);
+}
+
+String SDI12Device::serialIdentity()
+{
+    if (randIdentity != -1)
+    {
+        return String(randIdentity);
+    }
+    int randNumber = random(300);
+    randIdentity = randNumber + 1000; // Ensure it's a 4-digit number
+
+    return String(randIdentity);
+}
+
 /**
  * @public
  *

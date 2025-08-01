@@ -7,8 +7,10 @@
 #include "system/time.h"
 #include "system/sd-card.h"
 #include "system/utils.h"
+#include "system/watchdog.h"
 // Declare the global instance
 
+extern WatchdogClass Watchdog;
 extern FuelGaugeClass FuelGauge;
 extern TimeClass Time;
 extern Persistence Persist;
