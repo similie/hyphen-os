@@ -44,8 +44,9 @@ void setup()
 {
   mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
                                    esp_mbedtls_my_free);
+  // setCpuFrequencyMhz(80);
   Watchdog.start();
-  delay(10000); // wait for the system to settle
+  delay(1000); // wait for the system to settle
 
   Serial.begin(115200);
   initClockFromBuildTime();

@@ -253,6 +253,7 @@ bool SDI12Device::isConnected()
     {
         return true;
     }
+    Serial.printf("Checking if device is connected: %s\n", String(digitalRead(DEVICE_CONNECTED_PIN) == LOW ? "YES" : "NO").c_str());
     return digitalRead(DEVICE_CONNECTED_PIN) == LOW;
 }
 
@@ -268,8 +269,8 @@ bool SDI12Device::isConnected()
  */
 String SDI12Device::getWire(String content)
 {
-    manager.sendCommand(content);
-    delay(300); // wait a while for a response
+    manager.sendCommand("0R0!");
+    delay(SDI12_WAIT_READ); // wait a while for a response
     return readSDI();
 }
 
@@ -300,11 +301,13 @@ String SDI12Device::readSDI()
 void SDI12Device::readWire()
 {
     readAttempt++;
+    // Serial.printf("Read attempt: %d\n", readAttempt);
     if (!readReady())
     {
         return;
     }
     readAttempt = 0;
+    // Serial.printf("Reading wire for %s with cmd %s\n", name().c_str(), getCmd().c_str());
     String response = getWire(getCmd());
     Utils::log("SDI12_RESPONSE", response);
     parseSerial(response);
@@ -455,6 +458,18 @@ void SDI12Device::print()
     }
 }
 
+// void IRAM_ATTR SDI12::handleInterrupt()
+// {
+//     // existing code…
+//     if (_activeObject)
+//         _activeObject->receiveISR();
+// }
+
+// void IRAM_ATTR SDI12::receiveISR()
+// {
+//     // existing code…
+// }
+
 /**
  * @public
  *
@@ -469,10 +484,11 @@ void SDI12Device::init()
 {
     if (READ_ON_LOW_ONLY)
     {
-        pinMode(DEVICE_CONNECTED_PIN, INPUT);
+        pinMode(DEVICE_CONNECTED_PIN, INPUT_PULLUP);
     }
-
     manager.start();
+    // pinMode(SDI12_PIN, OUTPUT_OPEN_DRAIN);
+    // digitalWrite(SDI12_PIN, HIGH);
 }
 
 /**
