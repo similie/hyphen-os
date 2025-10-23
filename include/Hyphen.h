@@ -16,15 +16,20 @@
 class HyphenClass
 {
 private: // Map to store function names and corresponding std::function objects
-    std::map<std::string, std::function<int(const std::string &)>> functions;
+    const String thisDeviceId = String(DEVICE_PUBLIC_ID);
+    std::map<std::string, std::function<int(const std::string &)>>
+        functions;
     HyphenConnect hyphen;
+    String timeConfigTopic = String(MQTT_TOPIC_BASE) + "Config/" + thisDeviceId + "/Time";
+    String timeConfigRequestTopic = String(MQTT_TOPIC_BASE) + "Config/Time";
+    bool unsubscribeTimeConfig = false;
 
 public:
     HyphenClass();
     bool keepAlive(uint8_t);
     bool syncTime();
     bool hasHeartbeat();
-
+    bool ready();
     void variable(const char *, bool *);
     void variable(const char *, int *);
     void variable(const char *, unsigned int *);
@@ -64,17 +69,27 @@ public:
     template <typename T>
     void function(String, int (T::*func)(String), T *instance);
 
-    String deviceID();
+    const String deviceID();
     bool connected();
     void disconnect();
     bool connect();
     void process();
     void reset();
     bool publish(String, String);
+    bool publish(const char *, uint8_t *, size_t);
+    bool compressPublish(String topic, String payload);
     HyphenConnect &hyConnect();
+    void requestTime();
+    void setSubscriptions();
+    GPSData getLocation();
+    bool connectionOn();
+    bool connectionOff();
+    bool isOnline();
+    // void requestConfig();
 };
 
 extern HyphenClass Hyphen;
+
 template <typename T>
 void HyphenClass::function(const char *name, int (T::*func)(String), T *instance)
 {

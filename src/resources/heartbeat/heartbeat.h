@@ -1,5 +1,6 @@
 #include "Hyphen.h"
 #include "string.h"
+#include "version.h"
 #ifndef heartbeat_h
 #define heartbeat_h
 
@@ -11,11 +12,11 @@ class HeartBeat
 private:
     // char buf[HEART_BUFFER_SIZE];
     String deviceID;
-
-    String cellAccessTech(int rat);
+    String printUptime();
     void setCellDeets(JsonObject &writer);
     void setPowerDeets(JsonObject &writer);
     void setSystemDeets(JsonObject &writer);
+    void setNetwordDeets(JsonObject &writer);
 
 public:
     ~HeartBeat();

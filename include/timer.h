@@ -7,6 +7,7 @@ public:
     SystemTimer(unsigned long period, void (*callback)(), bool repeat = true);
     SystemTimer(unsigned long period, void (*callback)());
     SystemTimer(const unsigned int period, void (*callback)());
+    SystemTimer(void (*callback)());
     bool isActive();
     void start();
     void stop();

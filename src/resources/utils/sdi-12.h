@@ -1,3 +1,5 @@
+#define SDI12_BUFFER_SIZE 128
+
 #include <SDI12.h>
 
 #include "string.h"
@@ -9,10 +11,10 @@
 #include <stdint.h>
 
 #define SINGLE_SAMPLE true
-#define READ_ON_LOW_ONLY false
+#define READ_ON_LOW_ONLY true
 #define DEVICE_CONNECTED_PIN 13
 #define SDI12_PIN 15
-
+#define SDI12_WAIT_READ 300
 #ifndef sdi_object
 #define sdi_object
 
@@ -62,6 +64,8 @@ public:
         {
             return;
         }
+
+        // sdi12.setTimeoutValue(1000);
         sdi12.begin();
         delay(1000);
     }
@@ -133,6 +137,8 @@ class SDI12Device
 {
 protected:
     // SDI12 *sdi12;
+    const String DEVICE_IDENTITY_ADDRESS = "SDI12_DEVICE_IDENTITY_";
+    int randIdentity = -1;
     SDI12DeviceManager &manager = SDI12DeviceManager::getInstance();
     Bootstrap *boots;
     SDIParamElements *childElements;
@@ -162,6 +168,11 @@ protected:
     void runSingleSample();
     String getCmd();
     String readSDI();
+    void setupCloudFunctions();
+    int setAddress(String address);
+    void loadAddress();
+    String getIdentityKey();
+    String serialIdentity();
 
 public:
     ~SDI12Device();

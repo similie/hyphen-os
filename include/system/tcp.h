@@ -11,9 +11,10 @@ public:
     int connect(const char *, uint16_t);
     int connect(String, uint16_t);
     void stop();
+    int available();
     // bool connected();
     // size_t write(const uint8_t *, size_t, int);
     size_t write(const uint8_t *, size_t);
-    // int read(uint8_t *buffer, size_t size);
+    int read(uint8_t *buffer, size_t size);
 };
 #endif

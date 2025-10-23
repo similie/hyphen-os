@@ -4,6 +4,7 @@
 #include "resources/bootstrap/bootstrap.h"
 #include "resources/processors/LocalProcessor.h"
 #include "resources/utils/utils.h"
+#include "resources/utils/store.h"
 #include "resources/utils/configurator.h"
 #include "resources/heartbeat/heartbeat.h"
 #include "device.h"
@@ -34,26 +35,45 @@
 #define DEVICES_AT_MAX -2
 #define DEVICES_VIOLATES_RULES -3
 
+#ifndef AUTO_LOW_POWER_MODE_INTERVAL
+#define AUTO_LOW_POWER_MODE_INTERVAL 20
+#endif
+
 const size_t DEVICE_COUNT = 5;
 const size_t DEVICE_AGGR_COUNT = SEVEN;
-
+// Ticker     _keepAliveTicker;
 class DeviceManager
 {
 private:
+    PayloadStore storage;
     bool publishBusy = false;
     bool readBusy = false;
     bool rebootEvent = false;
+    int lowPowerMode = 0;
+    bool lowPowerModeSet = false;
+    int storedRecords = 0;
+    void offlineModeCheck();
+    void radioUp();
+    void radioDown(int);
+    void autoLowPowerMode();
+    void toggleRadio(int);
     void process();
-    const char *AI_DEVICE_LIST_EVENT = "Ai/Get/Devices";
+    const uint8_t VOLTAGE_CHECK = 3; // seconds
+    float solarPower();
+    float batteryPower();
+    int publisherThreadTask = 4096;
+    TaskHandle_t taskHandle = nullptr;
+    const char *AI_DEVICE_LIST_EVENT = "Hy/Get/Devices";
     unsigned int read_count = 0;
     uint8_t attempt_count = 0;
     Configurator config;
     void strapDevices();
+    void runOfflineCheck();
+    void maintenanceCallback();
     int applyDevice(Device *device, String deviceString, bool startup);
+    bool compressPublish(String, String);
     // this value is the payload values size. We capture the other
     // values at initialization from the selected devices
-    // const size_t DEFAULT_BUFFER_SIZE = 120;
-    // const size_t DEFAULT_BUFFER_SIZE_MAX = (size_t)BUFF_SIZE;
     Bootstrap boots;
     LocalProcessor *processor;
     bool FRESH_START = false;
@@ -77,7 +97,6 @@ private:
     void manageManualModel();
     void heartbeat();
     void processTimers();
-    // size_t getBufferSize();
     void packagePayload(JsonDocument &writer);
     String devicesString[MAX_DEVICES];
     Device *devices[DEVICE_COUNT][DEVICE_AGGR_COUNT];
@@ -108,6 +127,9 @@ private:
     int removeDevice(String value);
     int showDevices(String value);
     int clearAllDevices(String value);
+    int setWifi(String value);
+    int setApn(String value);
+    int setSimPin(String value);
 
     void setParamsCount();
     bool waitForTrue(bool (DeviceManager::*func)(), DeviceManager *binding, unsigned long time);

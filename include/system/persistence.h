@@ -8,7 +8,9 @@ class Persistence
 public:
     const String persistanceAddressBase = "address_key_";
     explicit Persistence(const char *namespaceName = "hyphen_storage");
+    ~Persistence() { end(); }
     bool begin();
+    bool begin(const char *);
     void end();
     template <typename T>
     bool put(const char *key, const T &value);
@@ -54,7 +56,6 @@ bool Persistence::get(const char *key, T &value)
         return false; // Size mismatch
     }
     size_t readSize = preferences.getBytes(key, &value, dataSize);
-    Serial.printf("get length  %d is not %d and not %d \n", preferences.getBytesLength(key), dataSize, readSize);
     closePreferences();
     return (readSize == dataSize);
 }
@@ -63,7 +64,6 @@ template <typename T>
 bool Persistence::put(uint16_t key, const T &value)
 {
     String keyStr = persistanceAddressBase + keyToString(key);
-    Serial.printf("Putting %s\n", keyStr.c_str());
     return put(keyStr.c_str(), value);
 }
 
@@ -71,7 +71,6 @@ template <typename T>
 bool Persistence::get(uint16_t key, T &value)
 {
     String keyStr = persistanceAddressBase + keyToString(key);
-    Serial.printf("Getting %s\n", keyStr.c_str());
     return get(keyStr.c_str(), value);
 }
 

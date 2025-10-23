@@ -8,10 +8,12 @@
 #include "math.h"
 
 #include "resources/utils/constants.h"
-
+#define LOG_FILE_NAME "hyphen-logs.txt"
 class Utils
 {
 private:
+    static const bool LOG_TO_FILE = true;
+    static const uint64_t MAX_LOG_SIZE = 1000000;
     String removeSensorIdFromPayload(String);
 
     bool notStopCheckChar(char);
@@ -60,6 +62,8 @@ public:
     // template<typename T>
     static String removeNewLine(String value);
     static void log(String event, String message);
+    static void logToFile(String log);
+
     static int log(String event, String message, int errorCode);
     size_t skipMultiple(unsigned int size, size_t maxVal, unsigned int threshold);
     static int simCallback(int type, const char *buf, int len, char *value);

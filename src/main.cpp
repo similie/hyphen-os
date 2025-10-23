@@ -1,25 +1,62 @@
-// #define MQTT_CA_CERTIFICATE "-----BEGIN CERTIFICATE-----\nMIIDQTCCAimgAwIBAgITBmyfz5m/jAo54vB4ikPmljZbyjANBgkqhkiG9w0BAQsF\nADA5MQswCQYDVQQGEwJVUzEPMA0GA1UEChMGQW1hem9uMRkwFwYDVQQDExBBbWF6\nb24gUm9vdCBDQSAxMB4XDTE1MDUyNjAwMDAwMFoXDTM4MDExNzAwMDAwMFowOTEL\nMAkGA1UEBhMCVVMxDzANBgNVBAoTBkFtYXpvbjEZMBcGA1UEAxMQQW1hem9uIFJv\nb3QgQ0EgMTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBALJ4gHHKeNXj\nca9HgFB0fW7Y14h29Jlo91ghYPl0hAEvrAIthtOgQ3pOsqTQNroBvo3bSMgHFzZM\n9O6II8c+6zf1tRn4SWiw3te5djgdYZ6k/oI2peVKVuRF4fn9tBb6dNqcmzU5L/qw\nIFAGbHrQgLKm+a/sRxmPUDgH3KKHOVj4utWp+UhnMJbulHheb4mjUcAwhmahRWa6\nVOujw5H5SNz/0egwLX0tdHA114gk957EWW67c4cX8jJGKLhD+rcdqsq08p8kDi1L\n93FcXmn/6pUCyziKrlA4b9v7LWIbxcceVOF34GfID5yHI9Y/QCB/IIDEgEw+OyQm\njgSubJrIqg0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMC\nAYYwHQYDVR0OBBYEFIQYzIU07LwMlJQuCFmcx7IQTgoIMA0GCSqGSIb3DQEBCwUA\nA4IBAQCY8jdaQZChGsV2USggNiMOruYou6r4lK5IpDB/G/wkjUu0yKGX9rbxenDI\nU5PMCCjjmCXPI6T53iHTfIUJrU6adTrCC2qJeHZERxhlbI1Bjjt/msv0tadQ1wUs\nN+gDS63pYaACbvXy8MWy7Vu33PqUXHeeE6V/Uq2V8viTO96LXFvKWlJbYK8U90vv\no/ufQJVtMVT8QtPHRh8jrdkPSHCa2XV4cdFyQzR1bldZwgJcJmApzyMZFo6IQ6XU\n5MsI+yMRQ+hDKXJioaldXgjUkK642M4UwtBV8ob2xJNDd2ZhwLnoQdeXeGADbkpy\nrqXRfboQnoZsG4q5WTP468SQvvG5\n-----END CERTIFICATE-----"
-// #define MQTT_DEVICE_CERTIFICATE "-----BEGIN CERTIFICATE-----\nMIIDWjCCAkKgAwIBAgIVAPUBtVsO3MefsLVihmHsR+furpUtMA0GCSqGSIb3DQEB\nCwUAME0xSzBJBgNVBAsMQkFtYXpvbiBXZWIgU2VydmljZXMgTz1BbWF6b24uY29t\nIEluYy4gTD1TZWF0dGxlIFNUPVdhc2hpbmd0b24gQz1VUzAeFw0yNDExMDUwMDAy\nNDhaFw00OTEyMzEyMzU5NTlaMB4xHDAaBgNVBAMME0FXUyBJb1QgQ2VydGlmaWNh\ndGUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDmkKnWHxWyc19idbdg\nqP1YG4ziMlSKncdv69QvsitvTMSToe+xd+G6zmvf3qlG2UF36rlmiUUGxxVQlY8K\neYZFIHzCCVbf2wtS6upe5s76uZpZLt1Gs05XgbWI5/1L+hGzwyKFDLl/FnXNeUAo\nMCgb/xfRhcQCrKCvEWHckbSD0ObVKuj7yFG9TnwjSk2BZaHpQ9HJLI9zd8KGNsY2\nbpFNSseoN/ALENXfD2AxqZhITfOglQ93rZ3nnYx6+fAKMRatdruCcxcQ3Oej0S1k\nY73+X8xtQi5vfPYZfAIMAM6LQyUG9DXqhO90K5g3fHapTDDPsdX/PsRzaqykZmec\nIHM/AgMBAAGjYDBeMB8GA1UdIwQYMBaAFJqmKCYo+e5q34KQgeZmuuIDq+0NMB0G\nA1UdDgQWBBRUOtybKfB7Jq5styHFpHb8LwrMezAMBgNVHRMBAf8EAjAAMA4GA1Ud\nDwEB/wQEAwIHgDANBgkqhkiG9w0BAQsFAAOCAQEAPh2hNZCVmuD98nUM9D6BgKUZ\nLhQetau7S+xc4zHNdoRFzogy/mot6+zMPevPsXkJT0dWkdctHYSFpu4RBR6NpelP\nKTaS3B4ywkFyBB+IqmV7gvD/MWhUgaNnY6XRxFq5X7bvgKATPOd4Lihoto6mjVtr\negJywzIS6s/Ouc85lCK2bMNfFPW5GW4eNfcJh9xdG+9KL1pNQWntmLPMkBcA5iWa\n6dLQQKoESW2Ch0GETdgWQdXAr/G96LEUnGI5qhcu82BGuan37bZe0ctucLvuGk9t\nfKwsl+y11/OdVNEZS4elP+jqQULW1y3HYXHjslXe5vg3JliqIsdq0eaa1NfSgQ==\n-----END CERTIFICATE-----"
-// #define MQTT_DEVICE_PRIVATE_KEY "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA5pCp1h8VsnNfYnW3YKj9WBuM4jJUip3Hb+vUL7Irb0zEk6Hv\nsXfhus5r396pRtlBd+q5ZolFBscVUJWPCnmGRSB8wglW39sLUurqXubO+rmaWS7d\nRrNOV4G1iOf9S/oRs8MihQy5fxZ1zXlAKDAoG/8X0YXEAqygrxFh3JG0g9Dm1Sro\n+8hRvU58I0pNgWWh6UPRySyPc3fChjbGNm6RTUrHqDfwCxDV3w9gMamYSE3zoJUP\nd62d552MevnwCjEWrXa7gnMXENzno9EtZGO9/l/MbUIub3z2GXwCDADOi0MlBvQ1\n6oTvdCuYN3x2qUwwz7HV/z7Ec2qspGZnnCBzPwIDAQABAoIBAEeqwc/Xu7PLXuPI\n+WYnQRBpB+KriFHJ91sXr83fkNa4wwWsuUetntGlJizhFjb6gvoWUOjJVFZl/X8d\n7edwnMbR8VWS95j/ikaM1KsJDV8r4AlGous+AuT6YYYbrkU2htgcmJdIvEP/pEBp\nJwMW7PC+2xV6gdHe/NdODOA1vimWZ5COAkuJl5KtZGk1z3Zpy52hU5Qw7c98P+nK\nQgKpGe7q4MeXNCWUUUFFROmONTjS22EGM9QNtCpPKY3guOCCoL6hXF+lYaFmATIY\nK0vP0mKUTNvSc4iuNeNUAXRcSYe5LwIQdk6Y7QguNlAyxiXp70g0NOkSG8fuFB2X\n5gQwtoECgYEA89yZveN5ipguxnAP4zm8LmFiyw8Ft6EVoFy8KOG9vyiiDB5k6Iea\ndxjEylSg0TYwy7UL2ODVb8Wee0aCyWuB4pqi/CwPv3g4YbFg9qhcEwJ3JoLxhGXU\nP87a+nmTgXOwnRhmRiAw4qopF5ddPLAHMeHilG0K5fsGDY+lq4H7w38CgYEA8gqh\ni30YdmMHXdmay3G7jBf79FkNuMn5r2Anw3wjAjlPElgyqqjX0N/e9dbDC/l+jy8D\nSjC7WVmjbmNMeg+hEzU4rAjds9PP6MJaVHfNh/FH+Zi9U1mGWNmXWxY+h1B3XWCU\nl6usvTbZNso1FqbxXFlzjdx1yMEU6LolPK90MEECgYEA6IUqjtXMOStcRlfpvjZ5\nyRuQkJ+VSv8sWMiznKOKQjAjOzzr6JAL541Vbrr80B9ErafGURgoSzf6If8ci6OX\nqBLcX2g/58hgsj3of6gOiw2pwK3QTfauR90cDQJJdIB0IYZ3VlwxYJ7xKY5pF4mc\ngqKoYfALGTieD+YtCHibL08CgYEAiF8fB9WSu9kt5F3fjnLlJZi518F5Lr111a8K\nmGTP4MfjWkWhPnBlMIWCPOck/BE1knz9kIaGeGA96cs+4qL9sTHSXXOdXl2gDde7\nR0482jRCxkmdmmGdhWALnEGbN2hJ6K2q6w3KBM3rcqhZYwrqgIrRxYMKRfMr0bhX\nlKqSf0ECgYBrkljH/jSuEgs6nWu+1P8gGIY8+Rh9lZRl4MktdiCh2RX2aH5HN2Vz\nUJkRncMB/GO1zwSgDwq86WCf/I6gDBS3zvDNJ8IRxHf9kT96F3EZ6S0D32/gMBJN\nyCaEQ0UcaWpBkolUr3bY5aDAtZUX6IyWKbCPwe6QmVH3IZx9Eww7Mw==\n-----END RSA PRIVATE KEY-----"
+
 /*
- * Project similie-logger
- * Description: A never fail basic runtime for our particle borons
- * Author: Similie
- * Date: Started 2 of December, 2020.
+ * Project hyphen-community
+ * Description: A never fail basic runtime for our ESP32-based devices
+ * Author: Similie - Adam Smith
+ * License: MIT
+ * Date: Started 1 of November, 2024.
  */
+#include <Arduino.h>
 #include "resources/devices/device-manager.h"
+#include <esp_heap_caps.h>
+#include "mbedtls/platform.h"
 #define DEBUGGER true // set to false for field devices
 LocalProcessor processor;
 // MqttProcessor processor(&boots);
 DeviceManager manager(&processor, DEBUGGER);
-
-// setup() runs once, when the device is first turned on.
-void setup()
+// BUILD_TIMESTAMP is a macro defined at compile time:
+#ifndef BUILD_TIMESTAMP
+#error "BUILD_TIMESTAMP not defined!"
+#endif
+extern "C" void *esp_mbedtls_my_calloc(size_t nelem, size_t elsize)
 {
-  gpio_install_isr_service(0);
-  manager.init();
+  return heap_caps_calloc(nelem, elsize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 }
 
+// free back to PSRAM
+extern "C" void esp_mbedtls_my_free(void *p)
+{
+  heap_caps_free(p);
+}
+
+void initClockFromBuildTime()
+{
+  // Build timestamp is in seconds since 1970
+  const time_t t = BUILD_TIMESTAMP;
+  struct timeval tv = {.tv_sec = t, .tv_usec = 0};
+  if (settimeofday(&tv, nullptr) != 0)
+  {
+    // handle error...
+  }
+}
+
+void setup()
+{
+  mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
+                                   esp_mbedtls_my_free);
+  // setCpuFrequencyMhz(80);
+  Watchdog.start();
+  delay(1000); // wait for the system to settle
+
+  Serial.begin(115200);
+  initClockFromBuildTime();
+  // Install the GPIO ISR service
+  gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_EDGE);
+
+  FuelGauge.init();
+  manager.init();
+  disableCore0WDT();
+}
 // loop() runs over and over again, as quickly as it can execute
 void loop()
 {

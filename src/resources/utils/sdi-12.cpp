@@ -253,6 +253,7 @@ bool SDI12Device::isConnected()
     {
         return true;
     }
+    Serial.printf("Checking if device is connected: %s\n", String(digitalRead(DEVICE_CONNECTED_PIN) == LOW ? "YES" : "NO").c_str());
     return digitalRead(DEVICE_CONNECTED_PIN) == LOW;
 }
 
@@ -268,8 +269,8 @@ bool SDI12Device::isConnected()
  */
 String SDI12Device::getWire(String content)
 {
-    manager.sendCommand(content);
-    delay(300); // wait a while for a response
+    manager.sendCommand("0R0!");
+    delay(SDI12_WAIT_READ); // wait a while for a response
     return readSDI();
 }
 
@@ -300,11 +301,13 @@ String SDI12Device::readSDI()
 void SDI12Device::readWire()
 {
     readAttempt++;
+    // Serial.printf("Read attempt: %d\n", readAttempt);
     if (!readReady())
     {
         return;
     }
     readAttempt = 0;
+    // Serial.printf("Reading wire for %s with cmd %s\n", name().c_str(), getCmd().c_str());
     String response = getWire(getCmd());
     Utils::log("SDI12_RESPONSE", response);
     parseSerial(response);
@@ -455,6 +458,18 @@ void SDI12Device::print()
     }
 }
 
+// void IRAM_ATTR SDI12::handleInterrupt()
+// {
+//     // existing code…
+//     if (_activeObject)
+//         _activeObject->receiveISR();
+// }
+
+// void IRAM_ATTR SDI12::receiveISR()
+// {
+//     // existing code…
+// }
+
 /**
  * @public
  *
@@ -469,10 +484,11 @@ void SDI12Device::init()
 {
     if (READ_ON_LOW_ONLY)
     {
-        pinMode(DEVICE_CONNECTED_PIN, INPUT);
+        pinMode(DEVICE_CONNECTED_PIN, INPUT_PULLUP);
     }
-
     manager.start();
+    // pinMode(SDI12_PIN, OUTPUT_OPEN_DRAIN);
+    // digitalWrite(SDI12_PIN, HIGH);
 }
 
 /**
@@ -515,6 +531,51 @@ size_t SDI12Device::buffSize()
 uint8_t SDI12Device::paramCount()
 {
     return getElements()->getTotalSize();
+}
+
+void SDI12Device::setupCloudFunctions()
+{
+    Hyphen.function("setAddress" + sendIdentity, &SDI12Device::setAddress, this);
+    Hyphen.variable("getDeviceAddress" + sendIdentity, &sendIdentity);
+}
+int SDI12Device::setAddress(String address)
+{
+    int val = (int)atoi(address.c_str());
+    if (val == -1)
+    {
+        Utils::log("SDI12Device", "No identity set, cannot set address");
+        return -1;
+    }
+    String cmd = String(sendIdentity) + String("A") + String(val) + String("!");
+    String response = getWire(cmd);
+    Utils::log("SDI12_RESPONSE", response);
+    sendIdentity = val;
+    Utils::log("SDI12Device", "Setting identity to " + String(sendIdentity));
+    return val;
+    // Persist.put(getIdentityKey(), sendIdentity);
+}
+
+void SDI12Device::loadAddress()
+{
+    int identity = -1;
+    // Persist.get(getIdentityKey(), identity);
+}
+
+String SDI12Device::getIdentityKey()
+{
+    return DEVICE_IDENTITY_ADDRESS + String(sendIdentity);
+}
+
+String SDI12Device::serialIdentity()
+{
+    if (randIdentity != -1)
+    {
+        return String(randIdentity);
+    }
+    int randNumber = random(300);
+    randIdentity = randNumber + 1000; // Ensure it's a 4-digit number
+
+    return String(randIdentity);
 }
 
 /**

@@ -97,15 +97,23 @@ void DeviceManager::init()
 {
     // apply delay to see the devices bootstrapping
     // in the serial console
+
+    Blue.init(&Hyphen);
+    // Storage.init();
+
     if (!processor->init())
     {
         Serial.println("Failed to connect to the network");
+        processor->disconnect();
+        vTaskDelay(1000);
         return init();
     }
-    Log.noticeln("BootStrapping");
+
+    Storage.init();
+    Serial.println("BootStrapping");
     boots.init();
     Log.noticeln("ITERATING DEVICES");
-    // delay(2000);
+    vTaskDelay(pdMS_TO_TICKS(2000));
     waitForTrue(&DeviceManager::isStrapped, this, 10000);
     // // if there are already default devices, let's process
     // // their init before we run the dynamic configuration
@@ -122,6 +130,10 @@ void DeviceManager::init()
     Log.noticeln("Clearing Array");
     // delay(2000);
     clearArray();
+    // need a new way to do this
+    storedRecords = storage.countEntries();
+    // vTaskDelay(pdMS_TO_TICKS(2000));
+    // Serial.println("Stored Records: " + String(storedRecords));
 }
 
 /**
@@ -150,9 +162,7 @@ void DeviceManager::setReadCount(unsigned int read_count)
  */
 bool DeviceManager::recommendedMaintence(uint8_t damageCount)
 {
-    long time = Time.now();
-    const long THRESHOLD = 1600000000;
-    if (time < THRESHOLD)
+    if (!Time.isSynced())
     {
         return true;
     }
@@ -214,6 +224,7 @@ void DeviceManager::loop()
     processor->loop();
     processTimers();
     iterateDevices(&DeviceManager::loopCallback, this);
+    Blue.loop();
 }
 
 //////////////////////////////
@@ -249,7 +260,7 @@ void DeviceManager::process()
     {
         return;
     }
-    delay(1000);
+    vTaskDelay(pdMS_TO_TICKS(1000));
     Utils::reboot();
 }
 
@@ -281,6 +292,36 @@ void DeviceManager::processTimers()
         boots.setHeartbeatTimer(false);
         heartbeat();
     }
+
+    if (boots.printMemoryFunc())
+    {
+        boots.printMem();
+    }
+
+    if (boots.checkOfflineReady())
+    {
+        runOfflineCheck();
+    }
+#ifdef HYPHEN_THREADED
+    if (boots.isTimerUpdateReady())
+    {
+        boots.timeCheckPoll();
+    }
+#endif
+}
+
+void DeviceManager::runOfflineCheck()
+{
+    boots.resetOfflineCheck();
+    // Serial.printf("Checking offline data %d %d \n");
+    // it's not a perfect world, so we allow it to be negative
+    // if we didn't account for the correct number of records
+    if (lowPowerModeSet || storedRecords <= 0 || !isNotPublishing() || !processor->ready())
+    {
+        return;
+    }
+    Utils::log("Popping offline data", "number of records=" + String(storedRecords));
+    popOfflineCollection();
 }
 
 /**
@@ -341,7 +382,12 @@ void DeviceManager::processRestoreDefaults()
  */
 void DeviceManager::storePayload(String payload, String topic)
 {
-    // this->storage->storePayload(payload, topic);
+    if (this->storage.push(topic, payload))
+    {
+        storedRecords++;
+        return Utils::log("STORED_PAYLOAD", String(storedRecords));
+    }
+    Utils::log("ERROR_STORING_PAYLOAD", payload);
 }
 
 /**
@@ -354,12 +400,17 @@ void DeviceManager::storePayload(String payload, String topic)
  */
 void DeviceManager::heartbeat()
 {
-    if (processor->isConnected())
+    if (!processor->isConnected())
     {
-        String artery = blood->pump();
-        Utils::log("SENDING_HEARTBEAT", artery);
-        processor->publish(processor->getHeartbeatTopic(), artery.c_str());
+        return;
     }
+    String artery = blood->pump();
+    Utils::log("SENDING_HEARTBEAT", artery);
+#ifdef COMPRESSED_PUBLISH
+    processor->compressPublish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
+#else
+    processor->publish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
+#endif
 }
 
 /**
@@ -380,7 +431,6 @@ void DeviceManager::read()
     {
         setReadCount(0);
     }
-
     readBusy = false;
     Utils::log("READ_EVENT", "READCOUNT=" + String(read_count));
 }
@@ -396,61 +446,19 @@ void DeviceManager::read()
 void DeviceManager::publish()
 {
     // checkBootThreshold();
+    if (!Time.isSynced())
+    {
+        Utils::log("Waiting for time sync", String(attempt_count));
+        read_count = 0;
+        return;
+    }
+
     waitForTrue(&DeviceManager::isNotReading, this, 10000);
     Utils::log("PUBLICATION_EVENT", "EVENT=" + processor->getPublishTopic(false));
     // waitFor(DeviceManager::isNotReading, 10000);
-    publishBusy = true;
-
     publisher();
-
-    if (attempt_count < ATTEMPT_THRESHOLD)
-    {
-        attempt_count++;
-    }
-    else
-    {
-        Utils::log("ON_LINE_FALURE", StringFormat("OFFLINE COUNT %d", attempt_count));
-        attempt_count = 0;
-    }
     read_count = 0;
-    publishBusy = false;
 }
-
-/**
- * @private
- *
- * getBufferSize
- *
- * Returns the buffer size for all connected devices
- * @return size_t
- */
-// size_t DeviceManager::getBufferSize()
-// {
-//     size_t buff_size = DEFAULT_BUFFER_SIZE;
-//     for (size_t i = 0; i < this->deviceCount; i++)
-//     {
-//         size_t size = this->deviceAggregateCounts[i];
-//         for (size_t j = 0; j < size; j++)
-//         {
-//             size_t buff = this->devices[i][j]->buffSize();
-//             if (buff)
-//             {
-//                 buff_size += buff;
-//             }
-//         }
-//     }
-//     if (!buff_size)
-//     {
-//         return DEFAULT_BUFFER_SIZE_MAX;
-//     }
-
-//     if (buff_size > DEFAULT_BUFFER_SIZE_MAX - 1)
-//     {
-//         return DEFAULT_BUFFER_SIZE_MAX;
-//     }
-
-//     return buff_size;
-// }
 
 /**
  * @private
@@ -462,7 +470,8 @@ void DeviceManager::publish()
  */
 void DeviceManager::popOfflineCollection()
 {
-    // this->storage->popOfflineCollection();
+    uint8_t count = storage.popOneOffline();
+    storedRecords -= count;
 }
 
 /**
@@ -548,8 +557,117 @@ String DeviceManager::payloadWriter(uint8_t &maintenanceCount)
     }
     String output;
     serializeJson(doc, output);
-    Serial.println(output);
+    Utils::log("MAINTENANCE_COUNT", StringFormat("%s", String(maintenanceCount)));
     return output;
+}
+
+void DeviceManager::toggleRadio(int lowPowerMode)
+{
+    if (lowPowerMode == 0)
+    {
+        return;
+    }
+
+    if (lowPowerModeSet && boots.lowPowerCheck())
+    {
+        Utils::log("LOW_POWER_MODE", "radioUp");
+        radioUp();
+    }
+    else if (processor->ready() && !lowPowerModeSet && storedRecords <= 0 && lowPowerMode > 0)
+    {
+        Utils::log("LOW_POWER_MODE", "radioDown");
+        storedRecords = 0;
+        radioDown(lowPowerMode);
+    }
+}
+
+float DeviceManager::solarPower()
+{
+    return FuelGauge.getSolarVCell();
+    // float solarV = 0;
+    // for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
+    // {
+    //     float volts = FuelGauge.getSolarVCell();
+    //     if (volts > solarV)
+    //     {
+    //         solarV = volts;
+    //     }
+    //     vTaskDelay(pdMS_TO_TICKS(50));
+    // }
+    // return solarV;
+}
+float DeviceManager::batteryPower()
+{
+    return FuelGauge.getNormalizedSoC();
+    // float batteryPct = 0;
+    // for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
+    // {
+    //     float pct = FuelGauge.getNormalizedSoC();
+    //     if (pct > batteryPct)
+    //     {
+    //         batteryPct = pct;
+    //     }
+    //     vTaskDelay(pdMS_TO_TICKS(50));
+    // }
+    // return batteryPct;
+}
+
+void DeviceManager::autoLowPowerMode()
+{
+    /*
+     * Check power conditions to see if we can turn off the radio
+     */
+    int powerDownTimeInMinutes = lowPowerModeSet ? -1 : 0;
+    float solarV = solarPower();
+    Utils::log("AUTO_LOW_POWER_MODE", "solarV=" + String(solarV));
+    // 2) if strong solar or battery, stay always on
+    if (solarV >= 17.0f)
+    {
+        return toggleRadio(powerDownTimeInMinutes);
+    }
+
+    float batteryPct = batteryPower();
+    Utils::log("AUTO_LOW_POWER_MODE", "batteryPct=" + String(batteryPct));
+
+    if (batteryPct > 80.0f)
+    {
+        return toggleRadio(powerDownTimeInMinutes);
+    }
+
+    if (batteryPct <= 80.0f && batteryPct > 60.0f)
+        powerDownTimeInMinutes = 5;
+    else if (batteryPct <= 60.0f && batteryPct > 40.0f)
+        powerDownTimeInMinutes = 10;
+    else if (batteryPct <= 40.0f && batteryPct > 20.0f)
+        powerDownTimeInMinutes = 15;
+    else if (batteryPct <= 20.0f && batteryPct > 10.0f)
+        powerDownTimeInMinutes = 20;
+    else if (batteryPct <= 10.0f && batteryPct > 0.0f)
+        powerDownTimeInMinutes = 25;
+    else if (batteryPct <= 0.0f)
+        powerDownTimeInMinutes = 60; // if battery is dead, we can turn off the radio for 60 minutes
+
+    Utils::log("AUTO_LOW_POWER_MODE", "powerDownTimeInMinutes=" + String(powerDownTimeInMinutes));
+    // 4) toggle the radio off for that many minutes
+    toggleRadio(powerDownTimeInMinutes);
+}
+
+void DeviceManager::offlineModeCheck()
+{
+    int lowPowerMode = boots.getLowPowerModeTime();
+    Utils::log("LOW_POWER_MODE", "TIME=" + String(lowPowerMode) + ", records=" + String(storedRecords));
+    if (lowPowerMode == 0)
+    {
+        return;
+    }
+    else if (lowPowerMode == -1)
+    {
+        // this is an auto mode
+        return autoLowPowerMode();
+    }
+
+    // here we check to see if the device is ready to turn off the radio
+    toggleRadio(lowPowerMode);
 }
 
 /**
@@ -562,28 +680,38 @@ String DeviceManager::payloadWriter(uint8_t &maintenanceCount)
  */
 void DeviceManager::publisher()
 {
-    attempt_count = 0;
-    read_count = 0;
+    // storage.bridgeSpi();
+    publishBusy = true;
+    // attempt_count = 0;
     uint8_t maintenanceCount = 0;
     String result = payloadWriter(maintenanceCount);
     bool maintenance = checkMaintenance(maintenanceCount);
     String topic = getTopic(maintenance);
-    bool success = processor->publish(topic, result);
+    bool success = false;
+    Utils::log("LOW POWER MODE", String(lowPowerModeSet));
 
-    Utils::log("SENDING_EVENT_READY " + topic, String(success));
+    if (!lowPowerModeSet)
+    {
+#ifdef COMPRESSED_PUBLISH
+        success = processor->compressPublish(topic, result);
+        Utils::log("PUBLISHING STATUS", String(success));
+#else
+        success = processor->publish(topic, storage.sanitize(result));
+        Utils::log("PUBLISHING STATUS", String(success));
+#endif
+    }
 
-    if (!maintenance && !success)
+    Utils::log("SENDING_EVENT_READY " + topic, String(((success == false || lowPowerModeSet) && !maintenance) ? "TRUE" : "FALSE"));
+
+    if (!maintenance && (success == false || lowPowerModeSet))
     {
         Utils::log("SENDING PAYLOAD FAILED. Storing", result);
         storePayload(result, topic);
     }
-
-    else if (success)
-    {
-        popOfflineCollection();
-    }
     clearArray();
     ROTATION++;
+    offlineModeCheck();
+    publishBusy = false;
 }
 
 /**
@@ -773,6 +901,38 @@ void DeviceManager::setCloudFunctions()
     Hyphen.function("removeDevice", &DeviceManager::removeDevice, this);
     Hyphen.function("showDevices", &DeviceManager::showDevices, this);
     Hyphen.function("clearAllDevices", &DeviceManager::clearAllDevices, this);
+    Hyphen.function("setApn", &DeviceManager::setApn, this);
+    Hyphen.function("setSimPin", &DeviceManager::setSimPin, this);
+    Hyphen.function("setWifi", &DeviceManager::setWifi, this);
+}
+
+int DeviceManager::setWifi(String value)
+{
+    int separatorIndex = value.indexOf('|');
+    String ssid = "";
+    String password = "";
+    if (separatorIndex != -1)
+    {
+        ssid = value.substring(0, separatorIndex);
+        password = value.substring(separatorIndex + 1);
+    }
+    else
+    {
+        return 0;
+    }
+    return Hyphen.hyConnect().getConnectionManager().addWifiNetwork(ssid.c_str(), password.c_str());
+}
+int DeviceManager::setApn(String value)
+{
+
+    Serial.print("SETTING APN ");
+    Serial.println(value);
+    return 0;
+    // return Hyphen.hyConnect().getConnectionManager().updateApn(value.c_str());
+}
+int DeviceManager::setSimPin(String value)
+{
+    return Hyphen.hyConnect().getConnectionManager().updateSimPin(value.c_str());
 }
 
 /**
@@ -791,6 +951,27 @@ void DeviceManager::clearDeviceString()
     {
         devicesString[i] = "";
     }
+}
+
+void DeviceManager::radioUp()
+{
+    if (!lowPowerModeSet)
+    {
+        return;
+    }
+    lowPowerModeSet = false;
+    boots.resetPowerCheck();
+    Hyphen.connectionOn();
+}
+void DeviceManager::radioDown(int lowPowerMode)
+{
+    if (lowPowerModeSet || lowPowerMode == 0)
+    {
+        return;
+    }
+    lowPowerModeSet = true;
+    boots.applyLowPowerMode(lowPowerMode);
+    Hyphen.connectionOff();
 }
 
 /**
@@ -1025,14 +1206,10 @@ int DeviceManager::removeDevice(String value)
  */
 bool DeviceManager::publishDeviceList()
 {
-    // JSONBufferWriter writer = createJSONBuffer(BUFF_SIZE);
-    // char buf[BUFF_SIZE];
-    // memset(buf, 0, sizeof(buf));
     JsonDocument doc;
-
     packagePayload(doc);
     JsonObject payload = doc["payload"].to<JsonObject>();
-    ;
+
     for (size_t i = 0; i < MAX_DEVICES; i++)
     {
         String d = devicesString[i];
@@ -1041,7 +1218,8 @@ bool DeviceManager::publishDeviceList()
 
     String output;
     serializeJson(doc, output);
-    return processor->publish(AI_DEVICE_LIST_EVENT, output.c_str());
+    Blue.log(output, LoggingDetails::PAYLOAD);
+    return processor->publish(AI_DEVICE_LIST_EVENT, storage.sanitize(output).c_str());
 }
 
 /**

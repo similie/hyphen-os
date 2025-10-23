@@ -22,9 +22,11 @@ public:
     void loop();
 
 private:
+    SSLClientESP32 sslClient;
     const String mqttTopic = String(MQTT_TOPIC_BASE) + "Config/OTA/" + Hyphen.deviceID();
-    void onMQTTMessage(const char *topic, const char *payload);
-    void downloadAndUpdate(const char *firmwareUrl, uint16_t port);
+    void onMQTTMessage(const char *, const char *);
+    void downloadAndUpdate(const char *, const char *, uint16_t);
+    Client &getClient(uint16_t);
 };
 
 #endif

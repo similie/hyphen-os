@@ -232,7 +232,6 @@ bool Utils::validConfigIdentity(uint8_t identity)
  * @return void
  *
  */
-// template<typename T>
 void Utils::log(String event, String message)
 {
     /**
@@ -243,9 +242,26 @@ void Utils::log(String event, String message)
     {
         return;
     }
-    Serial.print(getTimePadding());
-    Serial.print(" [SIMILIE] " + Utils::removeNewLine(event) + ": ");
-    Serial.println(Utils::removeNewLine(message));
+    String log = getTimePadding() + " [SIMILIE] " + Utils::removeNewLine(event) + ": " + Utils::removeNewLine(message);
+    Serial.println(log);
+    // Utils::logToFile(log);
+    Blue.log(log, LoggingDetails::LOGGING);
+}
+
+void Utils::logToFile(String log)
+{
+    if (!LOG_TO_FILE)
+    {
+        return;
+    }
+
+    // Storage.appendlnAsync(String(LOG_FILE_NAME), log, MAX_LOG_SIZE);
+
+    uint64_t size = Storage.appendln(String(LOG_FILE_NAME), log);
+    if (size > MAX_LOG_SIZE)
+    {
+        Storage.overwrite(LOG_FILE_NAME, "");
+    }
 }
 
 /**

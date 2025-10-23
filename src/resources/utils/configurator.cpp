@@ -60,29 +60,31 @@ bool Configurator::noIdentity(String configurationStore[], int index)
  *
  *
  */
-bool Configurator::violatesOccurrences(String value, int occrances)
+bool Configurator::violatesOccurrences(String value, int occurs)
 {
     int index = getEnumIndex(value);
     switch (index)
     {
     case all_weather:
-        return occrances > 1;
+        return occurs > 1;
     case soil_moisture:
-        return occrances > 2;
+        return occurs > 2;
     case rain_gauge:
-        return occrances > 1;
+        return occurs > 1;
     case gps_device:
-        return occrances > 1;
+        return occurs > 1;
     case battery:
-        return occrances > 1;
+        return occurs > 1;
     case sonic_sensor:
         return false;
     case beco_flow_meter:
-        return occrances > 2;
+        return occurs > 2;
     case flow_meter:
         return false;
     case video_capture:
-        return occrances > 1;
+        return occurs > 1;
+    case accelerometer:
+        return occurs > 1;
     default:
         return false;
     }
@@ -259,6 +261,8 @@ Device *Configurator::pullDeviceType(String configurationStore[], Bootstrap *boo
             return new Relay(boots, parseIdentity(configurationStore[DEVICE_IDENTITY_INDEX]));
         }
         return new Relay(boots);
+    case accelerometer:
+        return new Accelerometer(boots);
     default:
         return NULL;
     }

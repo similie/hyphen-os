@@ -13,9 +13,15 @@ private:
     Bootstrap *boots;
     const char *percentname = "bat";
     const char *voltsname = "b_v";
-    const uint8_t PARAM_LENGTH = 2;
+    const char *pow = "b_p";
+    const char *current = "b_c";
+    const char *solarVolts = "s_v";
+    const uint8_t PARAM_LENGTH = 5;
     String deviceName = "Battery";
-    FuelGaugeClass fuel;
+    uint8_t readCount = 0;
+    uint8_t maintenanceTicker = 0;
+    unsigned int batteryValue = 0;
+    float getAvgRead();
 
 public:
     ~Battery();

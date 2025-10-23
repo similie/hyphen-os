@@ -19,6 +19,7 @@ LocalProcessor::~LocalProcessor()
  */
 LocalProcessor::LocalProcessor()
 {
+    aliveTimestamp = millis();
 }
 
 /**
@@ -54,6 +55,11 @@ String LocalProcessor::getPublishTopic(bool maintenance)
     return String(this->SEND_EVENT_NAME);
 }
 
+bool LocalProcessor::compressPublish(String topic, String payload)
+{
+    return Hyphen.compressPublish(topic, payload);
+}
+
 /**
  * @public
  *
@@ -70,6 +76,17 @@ bool LocalProcessor::publish(const char *topic, const char *payload)
 {
     bool success = Hyphen.publish(topic, payload);
     return success;
+}
+
+bool LocalProcessor::publish(const char *topic, uint8_t *buf, size_t size)
+{
+    bool success = Hyphen.publish(topic, buf, size);
+    return success;
+}
+
+bool LocalProcessor::ready()
+{
+    return Hyphen.ready();
 }
 
 bool LocalProcessor::publish(String topic, String payload)
@@ -147,7 +164,9 @@ void LocalProcessor::parseMessage(String data, char *topic)
  */
 void LocalProcessor::loop()
 {
+    // #ifndef HYPHEN_THREADED
     Hyphen.process();
+    // #endif
 }
 
 /**
@@ -197,21 +216,40 @@ bool LocalProcessor::subscribe(const char *topic, std::function<void(const char 
     return Hyphen.hyConnect().subscribe(topic, callback);
 }
 
+bool LocalProcessor::unsubscribe(const char *topic)
+{
+    return Hyphen.hyConnect().unsubscribe(topic);
+}
+
 bool LocalProcessor::init()
 {
     size_t count = 0;
+#ifdef HYPHEN_THREADED
+    // 1) enqueue the setup exactly once
+    if (!connect())
+    {
+        Utils::log("Failed to enqueue threaded connect", "MQTT");
+        return false;
+    }
+
+    Utils::log("Threaded connection established", "MQTT");
+    return true;
+
+#else
+    // single-threaded fallback
     while (!connect())
     {
-        Serial.println("Connecting...");
-        delay(5000);
-        count++;
-        if (count > 10)
+        Utils::log("Connecting…", "MQTT");
+        vTaskDelay(pdMS_TO_TICKS(5000));
+        if (++count > 5)
         {
+            Utils::log("Connect timed out", "MQTT");
             return false;
         }
     }
-
+    Utils::log("Connection established", "MQTT");
     return true;
+#endif
 }
 
 void LocalProcessor::disconnect()
