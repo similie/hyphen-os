@@ -5,3 +5,4 @@ data/device-cert.pem
 data/private-key.pem
 data/root-ca.pem
 *.code-workspace
+plaformio.ini
