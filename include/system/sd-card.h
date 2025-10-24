@@ -74,4 +74,4 @@ private:
     SDCard &operator=(const SDCard &) = delete;
 };
 
-#endif 
+#endif
