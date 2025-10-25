@@ -1,4 +1,4 @@
-#include "Timer.h"
+#include "timer.h"
 
 SystemTimer::SystemTimer(unsigned long period, void (*callback)(), bool repeat) : _period(period / 1000.0), _callback(callback), _repeat(repeat) {}
 

@@ -1,4 +1,4 @@
-#include "Accelerometer.h"
+#include "accelerometer.h"
 #include "device.h"
 #include <Wire.h>
 #include <ArduinoJson.h>
