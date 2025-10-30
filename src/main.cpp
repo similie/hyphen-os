@@ -1,4 +1,3 @@
-
 /*
  * Project hyphen-community
  * Description: A never fail basic runtime for our ESP32-based devices

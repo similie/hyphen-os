@@ -6,3 +6,4 @@ data/private-key.pem
 data/root-ca.pem
 *.code-workspace
 platformio.ini
+src/certs

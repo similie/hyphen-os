@@ -1,6 +1,6 @@
 #include "Hyphen.h"
 
-HyphenClass::HyphenClass() : hyphen(ConnectionType::WIFI_ONLY)
+HyphenClass::HyphenClass() : hyphen(ConnectionType::CELLULAR_PREFERRED)
 {
 }
 void HyphenClass::process()
