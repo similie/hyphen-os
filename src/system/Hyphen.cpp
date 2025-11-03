@@ -4,7 +4,10 @@
 #define CONNECTION_TYPE ConnectionType::CELLULAR_PREFERRED
 #endif
 
-HyphenClass::HyphenClass() : hyphen(CONNECTION_TYPE)
+constexpr ConnectionType CONNECTION_TYPE_VALUE =
+    static_cast<ConnectionType>(CONNECTION_TYPE);
+
+HyphenClass::HyphenClass() : hyphen(CONNECTION_TYPE_VALUE)
 {
 }
 void HyphenClass::process()
