@@ -1,6 +1,10 @@
 #include "Hyphen.h"
 
-HyphenClass::HyphenClass() : hyphen(ConnectionType::CELLULAR_PREFERRED)
+#ifndef CONNECTION_TYPE
+#define CONNECTION_TYPE ConnectionType::CELLULAR_PREFERRED
+#endif
+
+HyphenClass::HyphenClass() : hyphen(CONNECTION_TYPE)
 {
 }
 void HyphenClass::process()
