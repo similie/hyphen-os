@@ -132,22 +132,8 @@ uint32_t PayloadStore::countEntries()
     {
         return 0;
     }
-
-    uint32_t count = 0;
     unsigned long pos = getPopPosition();
-    // Read until we hit an empty record
-    while (true)
-    {
-        // grab everything from pos up to the next '\n'
-        String line = Storage.read(storeFile, pos, '\n');
-        if (line.isEmpty())
-        {
-            // either EOF or blank line → stop
-            break;
-        }
-        count++;
-    }
-
+    uint32_t count = Storage.countLines(storeFile, pos);
     return count;
 }
 

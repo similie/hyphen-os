@@ -43,6 +43,8 @@ public:
     // Returns true if card detect pin indicates presence
     bool sdCardPresent() const;
 
+    uint32_t countLines(const String &path, unsigned long startPos = 0);
+
     // Call in your setup() to install the ISR
     void beginCardDetectInterrupt();
 

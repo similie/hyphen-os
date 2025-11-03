@@ -68,6 +68,44 @@ bool SDCard::ready()
     return sdCardPresent() && initialized;
 }
 
+uint32_t SDCard::countLines(const String &path, unsigned long startPos)
+{
+    if (!init())
+        return 0;
+
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+
+    SdFile file;
+    uint32_t count = 0;
+
+    if (file.open(path.c_str(), O_READ))
+    {
+        if (!file.seekSet(startPos))
+        {
+            Serial.println("[SDCard] seekSet() failed!");
+            file.close();
+            xSemaphoreGive(spiMutex);
+            return 0;
+        }
+        const size_t BUF_SIZE = 512;
+        uint8_t buf[BUF_SIZE];
+        int n;
+
+        while ((n = file.read(buf, BUF_SIZE)) > 0)
+        {
+            for (int i = 0; i < n; i++)
+            {
+                if (buf[i] == '\n')
+                    count++;
+            }
+        }
+        file.close();
+    }
+
+    xSemaphoreGive(spiMutex);
+    return count;
+}
+
 String SDCard::read(const String &path, unsigned long &startPoint, char terminatingChar)
 {
     String result;
