@@ -93,7 +93,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         authHeader += token;
         http.sendHeader("Authentication", authHeader);
     }
-
+    // http.sendHeader("Connection", "close");
     http.sendHeader("Accept", "application/octet-stream");
     http.endRequest();
 
@@ -156,7 +156,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                 {
                     Serial.printf("… %d/%d bytes\n", written, contentLength);
                     lastProgress = millis();
-                    // Hyphen.publish(ackTopic, "{\"status\":\"started\"}");
+                    Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                 }
             }
             yield();
@@ -173,52 +173,20 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
             // yield();
         }
     }
-    // Stream &stream = http.stre
 
-    // while (written < contentLength)
-    // {
-    //     int len = stream.readBytes(buff, sizeof(buff));
-    //     if (len <= 0)
-    //         break;
-
-    //     // Update.write(buff, len);
-    //     written += len;
-
-    //     if (millis() - lastProgress > 1000)
-    //     {
-    //         Serial.printf("... %d/%d bytes\n", written, contentLength);
-    //         lastProgress = millis();
-    //     }
-    // }
-    // Stream &stream = http.responseBody();
-
-    // while (client.connected() && written < contentLength)
-    // {
-    //     int avail = client.available();
-    //     if (avail > 0)
-    //     {
-    //         int len = client.read(buff, min((int)sizeof(buff), avail));
-    //         if (len > 0)
-    //         {
-    //             // Update.write(buff, len);
-    //             written += len;
-    //         }
-
-    //         if (millis() - lastProgress > 1000)
-    //         {
-    //             Serial.printf("  ... %d/%d bytes\r\n", written, contentLength);
-    //             lastProgress = millis();
-    //         }
-    //     }
-    //     delay(1);
-    // }
+    // Attempt clean shutdown of connection
+    http.stop();
+    if (client.connected())
+    {
+        client.stop();
+    }
 
     Serial.println("⬇️ OTA download complete...");
 
     if (Update.end() && Update.isFinished())
     {
         Serial.println("✅ OTA successful, rebooting...");
-        Hyphen.publish(ackTopic, "{\"status\":\"ok\"}");
+        Hyphen.publish(ackTopic, "{\"status\":\"complete\"}");
         delay(1000);
         ESP.restart();
     }
@@ -227,6 +195,4 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         Serial.printf("❌ OTA failed: %d\n", Update.getError());
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500}");
     }
-
-    http.stop();
 }

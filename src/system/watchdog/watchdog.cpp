@@ -56,6 +56,6 @@ void WatchdogClass::_taskFunc(void *pv)
     {
         vTaskDelay(wd->_periodTicks);
         wd->_pulse();
-        Serial.println("Pettin' my dog...");
+        Serial.println("Watchdog pulse sent");
     }
 }
