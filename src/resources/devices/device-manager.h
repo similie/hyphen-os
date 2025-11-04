@@ -8,6 +8,7 @@
 #include "resources/utils/configurator.h"
 #include "resources/heartbeat/heartbeat.h"
 #include "device.h"
+#include "system/ota.h"
 
 #define ONE 1
 #define TWO 2
@@ -46,6 +47,7 @@ class DeviceManager
 {
 private:
     PayloadStore storage;
+    OTAUpdate ota;
     bool publishBusy = false;
     bool readBusy = false;
     bool rebootEvent = false;

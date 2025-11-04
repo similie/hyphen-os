@@ -127,6 +127,7 @@ void DeviceManager::init()
     Log.noticeln("Setting Cloud Functions");
     // delay(2000);
     setCloudFunctions();
+    ota.setup();
     Log.noticeln("Clearing Array");
     // delay(2000);
     clearArray();
@@ -219,6 +220,7 @@ void DeviceManager::clearArray()
  */
 void DeviceManager::loop()
 {
+    ota.loop();
     process();
     boots.timers();
     processor->loop();
