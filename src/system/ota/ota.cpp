@@ -217,7 +217,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "Content length missing");
         http.stop();
-        // Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411}");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411}");
         return;
     }
 
@@ -225,7 +225,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "Not enough space for OTA");
         http.stop();
-        // Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507}");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507}");
         return;
     }
 
@@ -241,7 +241,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     // uint8_t buff[1024];
     // int written = 0;
     unsigned long lastReadMillis = millis();
-
+    Hyphen.publish(ackTopic, "{\"status\":\"streaming\"}");
     // ✅ THIS IS THE CORRECT WAY TO GET THE BODY STREAM:
     // ** Use the underlying client stream ** (not http.responseBody())
     while (client.connected() && written < contentLength)
