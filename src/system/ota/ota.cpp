@@ -1,6 +1,8 @@
 #include "system/ota.h"
 
-OTAUpdate::OTAUpdate() {}
+OTAUpdate::OTAUpdate()
+{
+}
 
 void OTAUpdate::setup()
 {
@@ -9,6 +11,19 @@ void OTAUpdate::setup()
 
 void OTAUpdate::loop()
 {
+
+    if (!persistenceInitialized && Hyphen.ready())
+    {
+        persistenceInitialized = true;
+        char buildBuffer[BUILD_ID_MAX_LEN] = {0};
+        if (Persist.get(PERSISTENCE_KEY, buildBuffer) && buildBuffer[0] != '\0')
+        {
+            Serial.printf("🔄 Last applied build ID: %s\n", buildBuffer);
+            Hyphen.publish(ackTopic, "{\"status\":\"complete\",\"build\":\"" + String(buildBuffer) + "\"}");
+            char empty[BUILD_ID_MAX_LEN] = {0};
+            Persist.put(PERSISTENCE_KEY, empty);
+        }
+    }
     if (!updateReady)
         return;
 
@@ -55,29 +70,87 @@ Client &OTAUpdate::getClient(uint16_t port)
 void OTAUpdate::parseDetailsAndSendUpdate()
 {
     updateReady = false;
-    JsonDocument doc;
-    if (deserializeJson(doc, receivedPayload))
+
+    // 1) Outer JSON: contains signature + payload/encrypted
+    JsonDocument outerDoc;
+    DeserializationError err1 = deserializeJson(outerDoc, receivedPayload);
+    if (err1)
     {
-        Serial.println("⚠️ OTA payload JSON parse failed");
+        Serial.println("⚠️ OTA outer JSON parse failed");
         return;
     }
 
+    // Extract signature
+    String signature = outerDoc["signature"].as<String>();
+
+    // Extract payloadJson (either encrypted or plain)
+    String payloadJson = "";
+    if (outerDoc["encrypted"].is<const char *>())
+    {
+        String encrypted = outerDoc["encrypted"].as<String>();
+        if (!crypto.decryptPayload(encrypted, payloadJson))
+        {
+            Serial.println("❌ OTA decrypt failed");
+            return;
+        }
+    }
+    else if (outerDoc["payload"].is<const char *>())
+    {
+        payloadJson = outerDoc["payload"].as<String>();
+    }
+    else
+    {
+        Serial.println("⚠️ OTA missing payload/encrypted");
+        return;
+    }
+
+    // 2) Verify signature
+    if (!crypto.verifySignature(payloadJson, signature))
+    {
+        Serial.println("❌ OTA payload signature invalid");
+        return;
+    }
+    Serial.println("✅ OTA payload signature valid");
+
+    // 3) Parse inner payload
+    JsonDocument doc;
+    DeserializationError err2 = deserializeJson(doc, payloadJson);
+    if (err2)
+    {
+        Serial.println("⚠️ OTA inner JSON parse failed");
+        return;
+    }
+
+    const char *devId = doc["device"];
+    const char *buildId = doc["build"];
     const char *host = doc["host"];
     const char *url = doc["url"];
     const char *token = doc["token"];
-    uint16_t port = doc["port"] | 80;
+    uint16_t port = uint16_t(doc["port"] | 80U);
+    const char *timestamp = doc["timestamp"];
+    const char *nonce = doc["nonce"];
 
+    // 4) Validate fields
     if (!host || !url)
     {
         Serial.println("⚠️ OTA missing host or URL");
         return;
     }
 
-    Serial.printf("📦 OTA from %s:%u%s\n", host, port, url);
-    downloadAndUpdate(host, url, token, port);
+    if (String(devId) != Hyphen.deviceID())
+    {
+        Serial.println("⚠️ OTA deviceId mismatch");
+        return;
+    }
+
+    // Optionally: check timestamp freshness and nonce uniqueness here
+    Serial.printf("📦 OTA from %s:%u %s (build %s)\n", host, port, url, buildId);
+    receivedPayload = ""; // clear sensitive data
+    // 5) Proceed to update
+    downloadAndUpdate(host, url, token, port, buildId);
 }
 
-void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, const char *token, uint16_t port)
+void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, const char *token, uint16_t port, const char *buildid)
 {
     Client &client = getClient(port);
     HttpClient http(client, host, port);
@@ -93,7 +166,6 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         authHeader += token;
         http.sendHeader("Authentication", authHeader);
     }
-    // http.sendHeader("Connection", "close");
     http.sendHeader("Accept", "application/octet-stream");
     http.endRequest();
 
@@ -186,8 +258,11 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     if (Update.end() && Update.isFinished())
     {
         Serial.println("✅ OTA successful, rebooting...");
-        Hyphen.publish(ackTopic, "{\"status\":\"complete\"}");
-        delay(1000);
+        Hyphen.publish(ackTopic, "{\"status\":\"rebooting\"}");
+        char buildBuffer[BUILD_ID_MAX_LEN] = {0};
+        strncpy(buildBuffer, buildid, BUILD_ID_MAX_LEN - 1);
+        Persist.put(PERSISTENCE_KEY, buildBuffer);
+        coreDelay(1000);
         ESP.restart();
     }
     else

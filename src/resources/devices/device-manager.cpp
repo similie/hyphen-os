@@ -586,32 +586,10 @@ void DeviceManager::toggleRadio(int lowPowerMode)
 float DeviceManager::solarPower()
 {
     return FuelGauge.getSolarVCell();
-    // float solarV = 0;
-    // for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
-    // {
-    //     float volts = FuelGauge.getSolarVCell();
-    //     if (volts > solarV)
-    //     {
-    //         solarV = volts;
-    //     }
-    //     vTaskDelay(pdMS_TO_TICKS(50));
-    // }
-    // return solarV;
 }
 float DeviceManager::batteryPower()
 {
     return FuelGauge.getNormalizedSoC();
-    // float batteryPct = 0;
-    // for (uint8_t i = 0; i < VOLTAGE_CHECK; i++)
-    // {
-    //     float pct = FuelGauge.getNormalizedSoC();
-    //     if (pct > batteryPct)
-    //     {
-    //         batteryPct = pct;
-    //     }
-    //     vTaskDelay(pdMS_TO_TICKS(50));
-    // }
-    // return batteryPct;
 }
 
 void DeviceManager::autoLowPowerMode()
@@ -926,11 +904,8 @@ int DeviceManager::setWifi(String value)
 }
 int DeviceManager::setApn(String value)
 {
-
-    Serial.print("SETTING APN ");
     Serial.println(value);
     return 0;
-    // return Hyphen.hyConnect().getConnectionManager().updateApn(value.c_str());
 }
 int DeviceManager::setSimPin(String value)
 {
@@ -1066,7 +1041,6 @@ bool DeviceManager::violatesDeviceRules(String value)
     {
         return violation;
     }
-
     return !violation;
 }
 
