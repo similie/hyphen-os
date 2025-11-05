@@ -167,8 +167,10 @@ public:
     void setup();
     void loop();
     Ticker tick;
+    bool updating();
 
 private:
+    volatile bool otaRunning = false;
     void startOtaTask();
     const char *PERSISTENCE_KEY = "last_build_id";
     String UTILS_LOG_TAG = "OTAUpdate";

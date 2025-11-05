@@ -186,6 +186,8 @@ void OTAUpdate::startOtaTask()
 void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, const char *token, uint16_t port, const char *buildid)
 {
     Hyphen.publish(ackTopic, "{\"status\":\"started\"}");
+
+    otaRunning = true;
     Client &client = getClient(port);
     HttpClient http(client, host, port);
 
@@ -209,6 +211,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         Utils::log(UTILS_LOG_TAG, "OTA HTTP %d\n", statusCode);
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404}");
+        otaRunning = false;
         return;
     }
 
@@ -218,6 +221,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         Utils::log(UTILS_LOG_TAG, "Content length missing");
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411}");
+        otaRunning = false;
         return;
     }
 
@@ -226,6 +230,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         Utils::log(UTILS_LOG_TAG, "Not enough space for OTA");
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507}");
+        otaRunning = false;
         return;
     }
 
@@ -301,5 +306,11 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "❌ OTA failed: %d\n", Update.getError());
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500}");
+        otaRunning = false;
     }
+}
+
+bool OTAUpdate::updating()
+{
+    return otaRunning;
 }

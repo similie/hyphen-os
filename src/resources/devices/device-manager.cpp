@@ -220,6 +220,12 @@ void DeviceManager::clearArray()
  */
 void DeviceManager::loop()
 {
+    if (ota.updating())
+    {
+        processor->loop();
+        return coreDelay(10);
+    }
+
     ota.loop();
     process();
     boots.timers();
