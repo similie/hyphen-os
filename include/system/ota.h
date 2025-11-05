@@ -164,7 +164,8 @@ private:
     bool persistenceInitialized = false;
     OTACrypto crypto;
     String receivedPayload = "";
-    String getCaCertificate();
+    String getCaCertificate(bool);
+    const char *getCaCertificate();
     bool updateReady = false;
     void parseDetailsAndSendUpdate();
     static void runUpdateCallback(OTAUpdate *);
