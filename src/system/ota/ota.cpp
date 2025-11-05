@@ -256,11 +256,11 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                 Update.write(buff, len);
                 written += len;
 
-                if (millis() - lastProgress > 1000)
+                if (millis() - lastProgress > 10000)
                 {
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
                     lastProgress = millis();
-                    Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
+                    Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "%" + "}");
                 }
             }
             yield();
