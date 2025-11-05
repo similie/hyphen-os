@@ -32,7 +32,8 @@ void OTAUpdate::loop()
         return;
     lastAttempt = millis();
 
-    parseDetailsAndSendUpdate();
+    // parseDetailsAndSendUpdate();
+    startOtaTask();
 }
 
 int OTAUpdate::onUpdateMessage(String payload)
@@ -162,11 +163,29 @@ void OTAUpdate::parseDetailsAndSendUpdate()
     downloadAndUpdate(host, url, token, port, buildId);
 }
 
+void OTAUpdate::startOtaTask()
+{
+    updateReady = false; // we are consuming this trigger now
+
+    xTaskCreatePinnedToCore(
+        [](void *param)
+        {
+            OTAUpdate *self = static_cast<OTAUpdate *>(param);
+            self->parseDetailsAndSendUpdate();
+            vTaskDelete(NULL); // kill task when done
+        },
+        "OTA_UPDATE_TASK",
+        24576, // <-- 16 KB stack for TLS handshake (safe)
+        this,
+        1, // priority (low)
+        NULL,
+        1 // APP CPU core
+    );
+}
+
 void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, const char *token, uint16_t port, const char *buildid)
 {
     Hyphen.publish(ackTopic, "{\"status\":\"started\"}");
-    // Hyphen.hyConnect().disconnect();
-
     Client &client = getClient(port);
     HttpClient http(client, host, port);
 

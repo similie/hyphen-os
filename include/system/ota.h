@@ -169,6 +169,7 @@ public:
     Ticker tick;
 
 private:
+    void startOtaTask();
     const char *PERSISTENCE_KEY = "last_build_id";
     String UTILS_LOG_TAG = "OTAUpdate";
     bool persistenceInitialized = false;
