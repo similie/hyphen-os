@@ -58,13 +58,11 @@ Client &OTAUpdate::getClient(uint16_t port)
 {
     if (port == 443)
     {
-        // Client secureClient = Hyphen.hyConnect().getClient();
-        // sslClient.setClient(&Hyphen.hyConnect().secureClient());
-        Hyphen.hyConnect().getSecureClient().setCACert(getCaCertificate().c_str());
-        // Optional: sslClient.setInsecure(); // if no root CA yet
-        return Hyphen.hyConnect().getSecureClient();
+        SecureClient secureClient = Hyphen.hyConnect().newSecureClient();
+        secureClient.setCACert(getCaCertificate().c_str());
+        return secureClient;
     }
-    return Hyphen.hyConnect().getClient();
+    return Hyphen.hyConnect().newClient();
 }
 
 void OTAUpdate::parseDetailsAndSendUpdate()
@@ -228,7 +226,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                 {
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
                     lastProgress = millis();
-                    Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
+                    // Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                 }
             }
             yield();

@@ -168,7 +168,7 @@ private:
     bool updateReady = false;
     void parseDetailsAndSendUpdate();
     static void runUpdateCallback(OTAUpdate *);
-    SSLClientESP32 sslClient;
+    // SecureClient sslClient;
     const String mqttTopic = String(MQTT_TOPIC_BASE) + "Config/OTA/" + Hyphen.deviceID();
     const String ackTopic = String(MQTT_TOPIC_BASE) + "Config/OTA/ack/" + Hyphen.deviceID();
     int onUpdateMessage(String);
