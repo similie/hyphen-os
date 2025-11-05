@@ -150,6 +150,16 @@ public:
     }
 };
 
+// --- In OTAUpdate class ---
+struct OTARunArgs
+{
+    char host[128];
+    char url[256];
+    char token[600]; // JWT can be long; size safely
+    uint16_t port;
+    char buildid[64];
+};
+
 class OTAUpdate
 {
 public:

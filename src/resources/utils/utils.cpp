@@ -244,7 +244,7 @@ void Utils::log(String event, String message)
     }
     String log = getTimePadding() + " [SIMILIE] " + Utils::removeNewLine(event) + ": " + Utils::removeNewLine(message);
     Serial.println(log);
-    Utils::logToFile(log);
+    // Utils::logToFile(log);
     Blue.log(log, LoggingDetails::LOGGING);
 }
 
