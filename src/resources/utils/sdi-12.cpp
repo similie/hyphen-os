@@ -269,7 +269,8 @@ bool SDI12Device::isConnected()
  */
 String SDI12Device::getWire(String content)
 {
-    manager.sendCommand("0R0!");
+    Serial.println("Sending SDI-12 command: " + content);
+    manager.sendCommand(content);
     delay(SDI12_WAIT_READ); // wait a while for a response
     return readSDI();
 }
