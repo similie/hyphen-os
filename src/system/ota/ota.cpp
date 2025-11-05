@@ -59,10 +59,10 @@ Client &OTAUpdate::getClient(uint16_t port)
     if (port == 443)
     {
         // Client secureClient = Hyphen.hyConnect().getClient();
-        sslClient.setClient(&Hyphen.hyConnect().getClient());
-        sslClient.setCACert(getCaCertificate().c_str());
+        // sslClient.setClient(&Hyphen.hyConnect().secureClient());
+        Hyphen.hyConnect().getSecureClient().setCACert(getCaCertificate().c_str());
         // Optional: sslClient.setInsecure(); // if no root CA yet
-        return sslClient;
+        return Hyphen.hyConnect().getSecureClient();
     }
     return Hyphen.hyConnect().getClient();
 }
