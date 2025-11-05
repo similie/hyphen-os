@@ -58,9 +58,9 @@ Client &OTAUpdate::getClient(uint16_t port)
 {
     if (port == 443)
     {
-        SecureClient secureClient = Hyphen.hyConnect().newSecureClient();
-        secureClient.setCACert(getCaCertificate().c_str());
-        return secureClient;
+        tlsClient = &Hyphen.hyConnect().newSecureClient();
+        tlsClient->setCACert(getCaCertificate().c_str());
+        return *tlsClient;
     }
     return Hyphen.hyConnect().newClient();
 }

@@ -169,6 +169,8 @@ private:
     void parseDetailsAndSendUpdate();
     static void runUpdateCallback(OTAUpdate *);
     // SecureClient sslClient;
+    SecureClient *tlsClient = nullptr; // <-- persistent pointer
+
     const String mqttTopic = String(MQTT_TOPIC_BASE) + "Config/OTA/" + Hyphen.deviceID();
     const String ackTopic = String(MQTT_TOPIC_BASE) + "Config/OTA/ack/" + Hyphen.deviceID();
     int onUpdateMessage(String);
