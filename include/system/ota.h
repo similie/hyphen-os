@@ -9,7 +9,7 @@
 #include <mbedtls/sha256.h>
 #include <mbedtls/base64.h>
 #include <mbedtls/x509_crt.h>
-
+#include "resources/utils/utils.h"
 #include <Update.h>
 #include "Hyphen.h"
 /**
@@ -160,6 +160,7 @@ public:
 
 private:
     const char *PERSISTENCE_KEY = "last_build_id";
+    String UTILS_LOG_TAG = "OTAUpdate";
     bool persistenceInitialized = false;
     OTACrypto crypto;
     String receivedPayload = "";

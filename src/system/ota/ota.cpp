@@ -18,7 +18,7 @@ void OTAUpdate::loop()
         char buildBuffer[BUILD_ID_MAX_LEN] = {0};
         if (Persist.get(PERSISTENCE_KEY, buildBuffer) && buildBuffer[0] != '\0')
         {
-            Serial.printf("🔄 Last applied build ID: %s\n", buildBuffer);
+            Utils::log(UTILS_LOG_TAG, StringFormat("🔄 Last applied build ID: %s\n", buildBuffer));
             Hyphen.publish(ackTopic, "{\"status\":\"complete\",\"build\":\"" + String(buildBuffer) + "\"}");
             char empty[BUILD_ID_MAX_LEN] = {0};
             Persist.put(PERSISTENCE_KEY, empty);
@@ -90,7 +90,7 @@ void OTAUpdate::parseDetailsAndSendUpdate()
         String encrypted = outerDoc["encrypted"].as<String>();
         if (!crypto.decryptPayload(encrypted, payloadJson))
         {
-            Serial.println("❌ OTA decrypt failed");
+            Serial.println("OTA decrypt failed");
             return;
         }
     }
@@ -100,24 +100,24 @@ void OTAUpdate::parseDetailsAndSendUpdate()
     }
     else
     {
-        Serial.println("⚠️ OTA missing payload/encrypted");
+        Serial.println("OTA missing payload/encrypted");
         return;
     }
 
     // 2) Verify signature
     if (!crypto.verifySignature(payloadJson, signature))
     {
-        Serial.println("❌ OTA payload signature invalid");
+        Serial.println("OTA payload signature invalid");
         return;
     }
-    Serial.println("✅ OTA payload signature valid");
+    Serial.println("OTA payload signature valid");
 
     // 3) Parse inner payload
     JsonDocument doc;
     DeserializationError err2 = deserializeJson(doc, payloadJson);
     if (err2)
     {
-        Serial.println("⚠️ OTA inner JSON parse failed");
+        Serial.println("OTA inner JSON parse failed");
         return;
     }
 
@@ -133,18 +133,18 @@ void OTAUpdate::parseDetailsAndSendUpdate()
     // 4) Validate fields
     if (!host || !url)
     {
-        Serial.println("⚠️ OTA missing host or URL");
+        Serial.println("OTA missing host or URL");
         return;
     }
 
     if (String(devId) != Hyphen.deviceID())
     {
-        Serial.println("⚠️ OTA deviceId mismatch");
+        Serial.println("OTA deviceId mismatch");
         return;
     }
 
     // Optionally: check timestamp freshness and nonce uniqueness here
-    Serial.printf("📦 OTA from %s:%u %s (build %s)\n", host, port, url, buildId);
+    Utils::log(UTILS_LOG_TAG, StringFormat("OTA from %s:%u %s (build %s)\n", host, port, url, buildId));
     receivedPayload = ""; // clear sensitive data
     // 5) Proceed to update
     downloadAndUpdate(host, url, token, port, buildId);
@@ -155,7 +155,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     Client &client = getClient(port);
     HttpClient http(client, host, port);
 
-    Serial.println("🔗 Connecting to firmware host...");
+    Serial.println("Connecting to firmware host...");
 
     http.beginRequest();
     http.get(firmwareUrl);
@@ -174,7 +174,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     int statusCode = http.responseStatusCode();
     if (statusCode != 200)
     {
-        Serial.printf("❌ OTA HTTP %d\n", statusCode);
+        Utils::log(UTILS_LOG_TAG, "OTA HTTP %d\n", statusCode);
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404}");
         return;
@@ -183,7 +183,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     int contentLength = http.contentLength();
     if (contentLength <= 0)
     {
-        Serial.println("❌ Content length missing");
+        Utils::log(UTILS_LOG_TAG, "Content length missing");
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411}");
         return;
@@ -191,13 +191,13 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
 
     if (!Update.begin(contentLength))
     {
-        Serial.println("❌ Not enough space for OTA");
+        Utils::log(UTILS_LOG_TAG, "Not enough space for OTA");
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507}");
         return;
     }
 
-    Serial.printf("⬇️ Starting OTA (%d bytes)\n", contentLength);
+    Utils::log(UTILS_LOG_TAG, "⬇️ Starting OTA (%d bytes)\n", contentLength);
     const size_t BUFF_SIZE = 512 * 8;
 
     uint8_t buff[BUFF_SIZE];
@@ -226,7 +226,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
 
                 if (millis() - lastProgress > 1000)
                 {
-                    Serial.printf("… %d/%d bytes\n", written, contentLength);
+                    Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
                     lastProgress = millis();
                     Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                 }
@@ -238,7 +238,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         {
             if (millis() - lastReadMillis > 5000)
             {
-                Serial.println("⚠️ No data for 5 seconds, breaking");
+                Serial.println("No data for 5 seconds, breaking");
                 break;
             }
             coreDelay(1);
@@ -267,7 +267,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     }
     else
     {
-        Serial.printf("❌ OTA failed: %d\n", Update.getError());
+        Utils::log(UTILS_LOG_TAG, "❌ OTA failed: %d\n", Update.getError());
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500}");
     }
 }
