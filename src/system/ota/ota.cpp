@@ -165,7 +165,7 @@ void OTAUpdate::parseDetailsAndSendUpdate()
 void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, const char *token, uint16_t port, const char *buildid)
 {
     Hyphen.publish(ackTopic, "{\"status\":\"started\"}");
-    Hyphen.hyConnect().disconnect();
+    // Hyphen.hyConnect().disconnect();
 
     Client &client = getClient(port);
     HttpClient http(client, host, port);
