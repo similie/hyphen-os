@@ -210,7 +210,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "OTA HTTP %d\n", statusCode);
         http.stop();
-        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404}");
+        // Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404}");
         otaRunning = false;
         return;
     }
