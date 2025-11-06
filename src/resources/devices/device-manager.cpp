@@ -223,7 +223,7 @@ void DeviceManager::loop()
     if (ota.updating())
     {
         processor->loop();
-        return coreDelay(10);
+        return coreDelay(100);
     }
 
     ota.loop();

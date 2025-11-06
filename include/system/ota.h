@@ -168,6 +168,7 @@ public:
     void loop();
     Ticker tick;
     bool updating();
+    bool isAllowedHost(const char *host);
 
 private:
     volatile bool otaRunning = false;

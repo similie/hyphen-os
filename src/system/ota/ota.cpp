@@ -89,7 +89,8 @@ void OTAUpdate::parseDetailsAndSendUpdate()
     DeserializationError err1 = deserializeJson(outerDoc, receivedPayload);
     if (err1)
     {
-        Serial.println("⚠️ OTA outer JSON parse failed");
+        Utils::log(UTILS_LOG_TAG, "OTA outer JSON parse failed");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Outer JSON parse failed\"}");
         return;
     }
 
@@ -103,7 +104,8 @@ void OTAUpdate::parseDetailsAndSendUpdate()
         String encrypted = outerDoc["encrypted"].as<String>();
         if (!crypto.decryptPayload(encrypted, payloadJson))
         {
-            Serial.println("OTA decrypt failed");
+            Utils::log(UTILS_LOG_TAG, "OTA decrypt failed");
+            Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Decryption failed\"}");
             return;
         }
     }
@@ -113,24 +115,27 @@ void OTAUpdate::parseDetailsAndSendUpdate()
     }
     else
     {
-        Serial.println("OTA missing payload/encrypted");
+        Utils::log(UTILS_LOG_TAG, "OTA missing payload/encrypted");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Missing payload/encrypted\"}");
         return;
     }
 
     // 2) Verify signature
     if (!crypto.verifySignature(payloadJson, signature))
     {
-        Serial.println("OTA payload signature invalid");
+        Utils::log(UTILS_LOG_TAG, "OTA payload signature invalid");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Invalid signature\"}");
         return;
     }
-    Serial.println("OTA payload signature valid");
+    Utils::log(UTILS_LOG_TAG, "OTA payload signature valid");
 
     // 3) Parse inner payload
     JsonDocument doc;
     DeserializationError err2 = deserializeJson(doc, payloadJson);
     if (err2)
     {
-        Serial.println("OTA inner JSON parse failed");
+        Utils::log(UTILS_LOG_TAG, "OTA inner JSON parse failed");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Inner JSON parse failed\"}");
         return;
     }
 
@@ -146,13 +151,22 @@ void OTAUpdate::parseDetailsAndSendUpdate()
     // 4) Validate fields
     if (!host || !url)
     {
-        Serial.println("OTA missing host or URL");
+        Utils::log(UTILS_LOG_TAG, "OTA missing host or URL");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Missing host or url\"}");
+        return;
+    }
+
+    if (!isAllowedHost(host))
+    {
+        Utils::log(UTILS_LOG_TAG, "OTA host not allowed");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Host not allowed\"}");
         return;
     }
 
     if (String(devId) != Hyphen.deviceID())
     {
-        Serial.println("OTA deviceId mismatch");
+        Utils::log(UTILS_LOG_TAG, "OTA deviceId mismatch");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"DeviceId mismatch\"}");
         return;
     }
 
@@ -177,10 +191,54 @@ void OTAUpdate::startOtaTask()
         "OTA_UPDATE_TASK",
         24576, // <-- 16 KB stack for TLS handshake (safe)
         this,
-        1, // priority (low)
+        4, // priority (low)
         NULL,
         1 // APP CPU core
     );
+}
+
+bool OTAUpdate::isAllowedHost(const char *host)
+{
+    if (!host || !*host)
+        return false;
+
+    // Always allow localhost explicitly
+    if (strcmp(host, "localhost") == 0 ||
+        strcmp(host, "127.0.0.1") == 0 ||
+        strcmp(host, "0.0.0.0") == 0)
+        return true;
+
+#ifdef OTA_ALLOWED_HOSTS
+    // Example: "hyphen-api.similie.com,api.mycompany.com"
+    const char *allowed = OTA_ALLOWED_HOSTS;
+    const char *start = allowed;
+
+    while (*start)
+    {
+        // Find the next comma or end
+        const char *end = strchr(start, ',');
+        size_t len = end ? (size_t)(end - start) : strlen(start);
+
+        // Compare the host with this entry (case-sensitive or insensitive)
+        if (strncmp(host, start, len) == 0 && host[len] == '\0')
+        {
+            return true; // MATCH ✅
+        }
+
+        // Move to the next entry
+        if (!end)
+            break;
+        start = end + 1;
+        while (*start == ' ' || *start == '\t')
+            start++; // skip whitespace
+    }
+
+    // Not found → reject ❌
+    return false;
+#else
+    // If not defined → allow all ✅
+    return true;
+#endif
 }
 
 void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, const char *token, uint16_t port, const char *buildid)
@@ -210,7 +268,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "OTA HTTP %d\n", statusCode);
         http.stop();
-        // Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404}");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404,\"error\":\"Host Not found\"}");
         otaRunning = false;
         return;
     }
@@ -220,7 +278,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "Content length missing");
         http.stop();
-        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411}");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411,\"error\":\"Content Length Required\"}");
         otaRunning = false;
         return;
     }
@@ -229,26 +287,20 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     {
         Utils::log(UTILS_LOG_TAG, "Not enough space for OTA");
         http.stop();
-        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507}");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507,\"error\":\"Insufficient Storage\"}");
         otaRunning = false;
         return;
     }
 
     Utils::log(UTILS_LOG_TAG, "⬇️ Starting OTA (%d bytes)\n", contentLength);
-    const size_t BUFF_SIZE = 512 * 8;
+    const size_t BUFF_SIZE = 512 * 2;
 
     uint8_t buff[BUFF_SIZE];
     int written = 0;
 
-    // ✅ Use the original client directly — http uses it internally
     unsigned long lastProgress = millis();
 
-    // uint8_t buff[1024];
-    // int written = 0;
     unsigned long lastReadMillis = millis();
-    Hyphen.publish(ackTopic, "{\"status\":\"streaming\"}");
-    // ✅ THIS IS THE CORRECT WAY TO GET THE BODY STREAM:
-    // ** Use the underlying client stream ** (not http.responseBody())
     while (client.connected() && written < contentLength)
     {
         int avail = client.available();
@@ -261,21 +313,21 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                 Update.write(buff, len);
                 written += len;
 
-                if (millis() - lastProgress > 10000)
+                if (millis() - lastProgress > 5000)
                 {
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
                     lastProgress = millis();
-                    // Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "%" + "}");
+                    Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                 }
             }
-            yield();
+            // yield();
             lastReadMillis = millis();
         }
         else
         {
             if (millis() - lastReadMillis > 5000)
             {
-                Serial.println("No data for 5 seconds, breaking");
+                Utils::log(UTILS_LOG_TAG, "No data for 5 seconds, breaking");
                 break;
             }
             coreDelay(1);
@@ -290,11 +342,11 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         client.stop();
     }
 
-    Serial.println("⬇️ OTA download complete...");
+    Utils::log(UTILS_LOG_TAG, "⬇️ OTA download complete...");
 
     if (Update.end() && Update.isFinished())
     {
-        Serial.println("✅ OTA successful, rebooting...");
+        Utils::log(UTILS_LOG_TAG, "✅ OTA successful, rebooting...");
         Hyphen.publish(ackTopic, "{\"status\":\"rebooting\"}");
         char buildBuffer[BUILD_ID_MAX_LEN] = {0};
         strncpy(buildBuffer, buildid, BUILD_ID_MAX_LEN - 1);
@@ -305,7 +357,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     else
     {
         Utils::log(UTILS_LOG_TAG, "❌ OTA failed: %d\n", Update.getError());
-        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500}");
+        Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Update Failed\"}");
         otaRunning = false;
     }
 }
