@@ -325,7 +325,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         }
         else
         {
-            if (millis() - lastReadMillis > 5000)
+            if (millis() - lastReadMillis > 10000)
             {
                 Utils::log(UTILS_LOG_TAG, "No data for 5 seconds, breaking");
                 break;
