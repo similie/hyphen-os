@@ -221,8 +221,12 @@ void DeviceManager::clearArray()
 void DeviceManager::loop()
 {
     if (ota.updating())
-    {
-        processor->loop();
+    { // if we are wifi we can maintain the connection
+        if (ota.maintainConnection())
+        {
+            processor->loop();
+        }
+
         return coreDelay(100);
     }
 

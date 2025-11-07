@@ -246,6 +246,11 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     Hyphen.publish(ackTopic, "{\"status\":\"started\"}");
 
     otaRunning = true;
+    if (!maintainConnection())
+    {
+        Hyphen.hyConnect().pause();
+    }
+
     Client &client = getClient(port);
     HttpClient http(client, host, port);
 
@@ -292,32 +297,35 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         return;
     }
 
-    Utils::log(UTILS_LOG_TAG, "⬇️ Starting OTA (%d bytes)\n", contentLength);
-    const size_t BUFF_SIZE = 512 * 2;
+    Utils::log(UTILS_LOG_TAG, StringFormat("⬇️ Starting OTA (%d bytes)\n", contentLength));
+    const size_t BUFF_SIZE = 2920;
 
     uint8_t buff[BUFF_SIZE];
     int written = 0;
 
-    unsigned long lastProgress = millis();
+    // unsigned long lastProgress = millis();
 
     unsigned long lastReadMillis = millis();
+    unsigned long lastProgressBytes = 0;
     while (client.connected() && written < contentLength)
     {
         int avail = client.available();
         if (avail > 0)
         {
-            int toRead = (avail > BUFF_SIZE ? BUFF_SIZE : avail);
-            int len = client.read(buff, toRead);
+            // int toRead = (avail > BUFF_SIZE ? BUFF_SIZE : avail);
+            // int len = client.read(buff, toRead);
+            int len = client.readBytes(buff, BUFF_SIZE);
             if (len > 0)
             {
                 Update.write(buff, len);
                 written += len;
 
-                if (millis() - lastProgress > 5000)
+                if (written - lastProgressBytes >= (16 * 1024))
                 {
+                    lastProgressBytes = written;
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
-                    lastProgress = millis();
-                    Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
+                    // lastProgress = millis();
+                    // Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                 }
             }
             // yield();
@@ -325,9 +333,9 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         }
         else
         {
-            if (millis() - lastReadMillis > 10000)
+            if (millis() - lastReadMillis > 30000)
             {
-                Utils::log(UTILS_LOG_TAG, "No data for 10 seconds, breaking");
+                Utils::log(UTILS_LOG_TAG, "No data for 30 seconds, breaking");
                 break;
             }
             coreDelay(1);
@@ -357,9 +365,19 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     else
     {
         Utils::log(UTILS_LOG_TAG, "❌ OTA failed: %d\n", Update.getError());
+        if (!maintainConnection())
+        {
+            Hyphen.hyConnect().resume();
+        }
+
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":500,\"error\":\"Update Failed\"}");
         otaRunning = false;
     }
+}
+
+bool OTAUpdate::maintainConnection()
+{
+    return otaRunning && Hyphen.hyConnect().getConnectionClass() == ConnectionClass::WIFI;
 }
 
 bool OTAUpdate::updating()

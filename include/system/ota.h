@@ -169,6 +169,7 @@ public:
     Ticker tick;
     bool updating();
     bool isAllowedHost(const char *host);
+    bool maintainConnection();
 
 private:
     volatile bool otaRunning = false;
