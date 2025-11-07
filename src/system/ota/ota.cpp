@@ -325,7 +325,10 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                     lastProgressBytes = written;
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
                     // lastProgress = millis();
-                    // Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
+                    if (maintainConnection())
+                    {
+                        Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
+                    }
                 }
             }
             // yield();
@@ -355,7 +358,10 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     if (Update.end() && Update.isFinished())
     {
         Utils::log(UTILS_LOG_TAG, "✅ OTA successful, rebooting...");
-        Hyphen.publish(ackTopic, "{\"status\":\"rebooting\"}");
+        if (maintainConnection())
+        {
+            Hyphen.publish(ackTopic, "{\"status\":\"rebooting\"}");
+        }
         char buildBuffer[BUILD_ID_MAX_LEN] = {0};
         strncpy(buildBuffer, buildid, BUILD_ID_MAX_LEN - 1);
         Persist.put(PERSISTENCE_KEY, buildBuffer);
