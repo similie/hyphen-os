@@ -1,8 +1,5 @@
 #include "system/watchdog.h"
-// WatchdogClass::WatchdogClass() : WatchdogClass(2000, 50)
-// {
-//     // Default constructor initializes with default pin and timing
-// }
+
 WatchdogClass::WatchdogClass(uint32_t periodMs, uint32_t pulseMs) : _periodTicks(pdMS_TO_TICKS(periodMs)), _pulseTicks(pdMS_TO_TICKS(pulseMs)), _taskHandle(nullptr)
 {
     pinMode(_dogPin, OUTPUT);
@@ -11,8 +8,7 @@ WatchdogClass::WatchdogClass(uint32_t periodMs, uint32_t pulseMs) : _periodTicks
 
 void WatchdogClass::start()
 {
-    // configure pin and do an initial pet so the TPS3422 won't
-    // pinMode(_dogPin, OUTPUT);
+    vTaskDelay(pdMS_TO_TICKS(100));
     digitalWrite(_dogPin, LOW);
     _pulse();
 
