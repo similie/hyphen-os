@@ -31,8 +31,6 @@ void OTAUpdate::loop()
     if (millis() - lastAttempt < retryInterval)
         return;
     lastAttempt = millis();
-
-    // parseDetailsAndSendUpdate();
     startOtaTask();
 }
 
@@ -233,10 +231,10 @@ bool OTAUpdate::isAllowedHost(const char *host)
             start++; // skip whitespace
     }
 
-    // Not found → reject ❌
+    // Not found → reject
     return false;
 #else
-    // If not defined → allow all ✅
+    // If not defined → allow all
     return true;
 #endif
 }
@@ -320,18 +318,16 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                 Update.write(buff, len);
                 written += len;
 
-                if (written - lastProgressBytes >= (16 * 1024))
+                if (written - lastProgressBytes >= (64 * 1024))
                 {
                     lastProgressBytes = written;
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
-                    // lastProgress = millis();
                     if (maintainConnection())
                     {
                         Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                     }
                 }
             }
-            // yield();
             lastReadMillis = millis();
         }
         else
