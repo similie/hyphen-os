@@ -31,33 +31,37 @@ To enable remote control, telemetry, OTA updates, and device configuration, **Hy
 
 Hyphen Ecosystem Overview
 
-+-----------------------+ +----------------------------+
-| Hyphen Command | | External Services |
-| Center | | (Dashboards, Databases, |
-| - Device Fleet Mgmt | MQTT | Alerts, Integrations) |
-| - OTA Updates | <-------> | |
-| - Telemetry Viewer | HTTPS | (via Forwarders/Decoders) |
-+----------+------------+ +-------------+--------------+
-| ^
-| |
-v |
-+----------+------------+ |
-| Hyphen Connect | |
-| (Client Networking) | |
-| - Secure MQTT Auth | |
-| - Session Handling | |
-| - WiFi / Cellular | |
-+----------+------------+ |
-| |
-v |
-+----------+------------+ |
-| HyphenOS | |
-| (Embedded Runtime) | |
-| - Sensor Drivers | |
-| - Control Loops | |
-| - OTA + Watchdogs | |
-| - Non-blocking Core | |
+```
+Hyphen Ecosystem Overview
+
++-----------------------+            +----------------------------+
+|   Hyphen Command      |            |    External Services       |
+|       Center          |            | (Dashboards, Databases,    |
+|  - Device Fleet Mgmt  |   MQTT     |  Alerts, Integrations)     |
+|  - OTA Updates        | <------->  |                            |
+|  - Telemetry Viewer   |   HTTPS    |  (via Forwarders/Decoders) |
++----------+------------+            +-------------+--------------+
+           |                                           ^
+           |                                           |
+           v                                           |
++----------+------------+                              |
+|     Hyphen Connect     |                             |
+|  (Client Networking)   |                             |
+|  - Secure MQTT Auth    |                             |
+|  - Session Handling    |                             |
+|  - WiFi / Cellular     |                             |
++----------+------------+                              |
+           |                                           |
+           v                                           |
++----------+------------+                              |
+|        HyphenOS        |                             |
+|  (Embedded Runtime)    |                             |
+|  - Sensor Drivers      |                             |
+|  - Control Loops       |                             |
+|  - OTA + Watchdogs     |                             |
+|  - Non-blocking Core   |                             |
 +-----------------------+------------------------------+
+```
 
 ### Sequence of Operation
 
@@ -176,20 +180,17 @@ flowchart TD
   CC --> Forwarders --> External[(External Systems)]
 ```
 
-# License
+# ROADMAP
 
-This project is released under the MIT License.
-You are free to use, modify, adapt, and integrate it into your own systems — commercial or otherwise — with attribution.
-
-| Feature / Goal                        | Status       | Description                                                                 |
-| ------------------------------------- | ------------ | --------------------------------------------------------------------------- |
-| Self-Healing "Never Fail" Runtime     | In Progress  | Core architecture focused on recovery and uptime in remote deployments.     |
-| Local + Cloud OTA Updates             | Stable       | OTA supported over WiFi and Cellular with authenticated update validation.  |
-| Unified Sensor + Peripheral Framework | Active       | Supports SDI-12, I2C, analog, GPS, cameras, storage, and expansion modules. |
-| Hybrid Networking (WiFi + Cellular)   | Stable       | Automatic fallback, reconnection, and adaptive network recovery.            |
-| Dual-SIM / Roaming Support            | Experimental | Intended for deployments across roaming or cross-border networks.           |
-| Edge Analytics & TinyML Support       | Planned      | Lightweight inference for environmental anomaly and trend detection.        |
-| Full Power-Cycle + Watchdog Hardening | In Progress  | Goal: multi-year uptime with no manual physical resets.                     |
+| Feature / Goal                        | Status      | Description                                                                 |
+| ------------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| Self-Healing "Never Fail" Runtime     | In Progress | Core architecture focused on recovery and uptime in remote deployments.     |
+| Local + Cloud OTA Updates             | Stable      | OTA supported over WiFi and Cellular with authenticated update validation.  |
+| Unified Sensor + Peripheral Framework | Active      | Supports SDI-12, I2C, analog, GPS, cameras, storage, and expansion modules. |
+| Hybrid Networking (WiFi + Cellular)   | Stable      | Automatic fallback, reconnection, and adaptive network recovery.            |
+| Dual-SIM / Roaming Support            | Planned     | Intended for deployments across roaming or cross-border networks.           |
+| Edge Analytics & TinyML Support       | Planned     | Lightweight inference for environmental anomaly and trend detection.        |
+| Full Power-Cycle + Watchdog Hardening | In Progress | Goal: multi-year uptime with no manual physical resets.                     |
 
 HyphenOS is built for real-world reliability in remote environments, and we welcome contributions that move us closer to resilient and self-recovering field deployments.
 
@@ -207,6 +208,13 @@ To contribute:
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request with a clear explanation of the change
+
+# License
+
+This project is released under the MIT License.
+You are free to use, modify, adapt, and integrate it into your own systems — commercial or otherwise — with attribution.
+
+---
 
 ### About Similie
 
