@@ -1,5 +1,5 @@
 /*
- * Project hyphen-community
+ * Project hyphen-os
  * Description: A never fail basic runtime for our ESP32-based devices
  * Author: Similie - Adam Smith
  * License: MIT
@@ -11,12 +11,8 @@
 #include "mbedtls/platform.h"
 #define DEBUGGER true // set to false for field devices
 LocalProcessor processor;
-// MqttProcessor processor(&boots);
 DeviceManager manager(&processor, DEBUGGER);
 // BUILD_TIMESTAMP is a macro defined at compile time:
-#ifndef BUILD_TIMESTAMP
-#error "BUILD_TIMESTAMP not defined!"
-#endif
 extern "C" void *esp_mbedtls_my_calloc(size_t nelem, size_t elsize)
 {
   return heap_caps_calloc(nelem, elsize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
@@ -27,7 +23,8 @@ extern "C" void esp_mbedtls_my_free(void *p)
 {
   heap_caps_free(p);
 }
-
+// BUILD_TIMESTAMP is a macro defined at compile time:
+#ifdef BUILD_TIMESTAMP
 void initClockFromBuildTime()
 {
   // Build timestamp is in seconds since 1970
@@ -38,6 +35,7 @@ void initClockFromBuildTime()
     // handle error...
   }
 }
+#endif
 
 void setup()
 {
@@ -48,7 +46,9 @@ void setup()
   delay(1000); // wait for the system to settle
 
   Serial.begin(115200);
+#ifdef BUILD_TIMESTAMP
   initClockFromBuildTime();
+#endif
   // Install the GPIO ISR service
   gpio_install_isr_service(ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_EDGE);
 
