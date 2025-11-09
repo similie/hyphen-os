@@ -43,8 +43,8 @@ void setup()
 {
   mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
                                    esp_mbedtls_my_free);
-  // setCpuFrequencyMhz(80);
-  Watchdog.start();
+  // / the bootstrapping may take a while, so we automate the watchdog
+  Watchdog.automatic();
   delay(1000); // wait for the system to settle
 
   Serial.begin(115200);
@@ -55,6 +55,10 @@ void setup()
   FuelGauge.init();
   manager.init();
   disableCore0WDT();
+  // stop the automatic watchdog
+  Watchdog.stop();
+  // we then start it manually to run off the main loop
+  Watchdog.start();
 }
 // loop() runs over and over again, as quickly as it can execute
 void loop()

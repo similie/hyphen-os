@@ -9,6 +9,7 @@ private:
     bool _pulseReady = false;
     void _pulse();
     uint8_t _dogPin = 32;
+    uint32_t periodMs = 0;
     TickType_t _periodTicks;
     TickType_t _pulseTicks;
     TaskHandle_t _taskHandle;

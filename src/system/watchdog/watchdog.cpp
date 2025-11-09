@@ -4,13 +4,14 @@ WatchdogClass::WatchdogClass(uint32_t periodMs, uint32_t pulseMs) : _periodTicks
 {
     pinMode(_dogPin, OUTPUT);
     digitalWrite(_dogPin, HIGH); // Ensure the watchdog starts in a safe state
+    this->periodMs = periodMs;
 }
 
 void WatchdogClass::start()
 {
     vTaskDelay(pdMS_TO_TICKS(100));
     digitalWrite(_dogPin, LOW);
-    tick.attach_ms(_periodTicks, &WatchdogClass::tickHandler, this);
+    tick.attach_ms(periodMs, &WatchdogClass::tickHandler, this);
     _pulse();
 }
 
@@ -70,6 +71,7 @@ void WatchdogClass::loop()
     {
         return;
     }
+    Serial.println("Watchdog automatic petting");
     _pulseReady = false;
     _pulse();
 }
