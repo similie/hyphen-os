@@ -71,7 +71,6 @@ void WatchdogClass::loop()
     {
         return;
     }
-    Serial.println("Watchdog automatic petting");
     _pulseReady = false;
     _pulse();
 }
