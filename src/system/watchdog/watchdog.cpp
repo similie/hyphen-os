@@ -10,6 +10,14 @@ void WatchdogClass::start()
 {
     vTaskDelay(pdMS_TO_TICKS(100));
     digitalWrite(_dogPin, LOW);
+    tick.attach_ms(_periodTicks, &WatchdogClass::tickHandler, this);
+    _pulse();
+}
+
+void WatchdogClass::automatic()
+{
+    vTaskDelay(pdMS_TO_TICKS(100));
+    digitalWrite(_dogPin, LOW);
     _pulse();
 
     // create a FreeRTOS task pinned to core 1 (optional)
@@ -54,4 +62,14 @@ void WatchdogClass::_taskFunc(void *pv)
         wd->_pulse();
         // Serial.println("My dogs needs some pets");
     }
+}
+
+void WatchdogClass::loop()
+{
+    if (!_pulseReady)
+    {
+        return;
+    }
+    _pulseReady = false;
+    _pulse();
 }
