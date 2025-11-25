@@ -8,12 +8,10 @@
 #include "math.h"
 
 #include "resources/utils/constants.h"
-#define LOG_FILE_NAME "hyphen-logs.txt"
+#include "resources/utils/store.h"
 class Utils
 {
 private:
-    static const bool LOG_TO_FILE = true;
-    static const uint64_t MAX_LOG_SIZE = 1000000;
     String removeSensorIdFromPayload(String);
 
     bool notStopCheckChar(char);
@@ -23,6 +21,7 @@ private:
 public:
     ~Utils();
     Utils();
+    static PayloadStore storage;
     static void reboot();
     void splitStringToValues(String, String *, size_t);
     static double parseCloudFunctionDouble(String value, String name);
@@ -62,7 +61,7 @@ public:
     // template<typename T>
     static String removeNewLine(String value);
     static void log(String event, String message);
-    static void logToFile(String log);
+    // static void logToFile(String log);
 
     static int log(String event, String message, int errorCode);
     size_t skipMultiple(unsigned int size, size_t maxVal, unsigned int threshold);

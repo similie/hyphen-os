@@ -48,6 +48,9 @@ public:
     // Call in your setup() to install the ISR
     void beginCardDetectInterrupt();
 
+    uint64_t fileSize(const String &path);
+    bool exists(const String &path);
+
 private:
     // Internal helper to lock SPI and call sd.begin()
     bool guardedBegin();

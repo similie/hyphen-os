@@ -28,6 +28,37 @@ SDCard::~SDCard()
     // Nothing to free
 }
 
+bool SDCard::exists(const String &path)
+{
+    if (!init())
+        return false;
+
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+    bool ok = sd.exists(path.c_str());
+    xSemaphoreGive(spiMutex);
+    return ok;
+}
+
+uint64_t SDCard::fileSize(const String &path)
+{
+    if (!init())
+        return 0;
+
+    xSemaphoreTake(spiMutex, portMAX_DELAY);
+
+    SdFile file;
+    uint64_t size = 0;
+
+    if (file.open(path.c_str(), O_READ))
+    {
+        size = file.fileSize(); // <-- SdFat gives us the real size
+        file.close();
+    }
+
+    xSemaphoreGive(spiMutex);
+    return size;
+}
+
 bool SDCard::sdCardPresent() const
 {
     // If the card-detect switch is active-low:

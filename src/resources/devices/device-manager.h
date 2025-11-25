@@ -4,7 +4,7 @@
 #include "resources/bootstrap/bootstrap.h"
 #include "resources/processors/LocalProcessor.h"
 #include "resources/utils/utils.h"
-#include "resources/utils/store.h"
+// #include "resources/utils/store.h"
 #include "resources/utils/configurator.h"
 #include "resources/heartbeat/heartbeat.h"
 #include "device.h"
@@ -46,7 +46,7 @@ const size_t DEVICE_AGGR_COUNT = SEVEN;
 class DeviceManager
 {
 private:
-    PayloadStore storage;
+    // PayloadStore storage;
     OTAUpdate ota;
     bool publishBusy = false;
     bool readBusy = false;

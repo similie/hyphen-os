@@ -168,7 +168,7 @@ void DeviceManager::init()
     // delay(2000);
     clearArray();
     // need a new way to do this
-    storedRecords = storage.countEntries();
+    storedRecords = Utils::storage.countEntries();
     // vTaskDelay(pdMS_TO_TICKS(2000));
     // Serial.println("Stored Records: " + String(storedRecords));
 }
@@ -429,7 +429,7 @@ void DeviceManager::processRestoreDefaults()
  */
 void DeviceManager::storePayload(String payload, String topic)
 {
-    if (this->storage.push(topic, payload))
+    if (Utils::storage.push(topic, payload))
     {
         storedRecords++;
         return Utils::log("STORED_PAYLOAD", String(storedRecords));
@@ -456,7 +456,7 @@ void DeviceManager::heartbeat()
 #ifdef COMPRESSED_PUBLISH
     processor->compressPublish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
 #else
-    processor->publish(processor->getHeartbeatTopic(), storage.sanitize(artery.c_str()));
+    processor->publish(processor->getHeartbeatTopic(), Utils::storage.sanitize(artery.c_str()));
 #endif
 }
 
@@ -517,7 +517,7 @@ void DeviceManager::publish()
  */
 void DeviceManager::popOfflineCollection()
 {
-    uint8_t count = storage.popOneOffline();
+    uint8_t count = Utils::storage.popOneOffline();
     storedRecords -= count;
 }
 
@@ -728,7 +728,7 @@ void DeviceManager::publisher()
         success = processor->compressPublish(topic, result);
         Utils::log("PUBLISHING STATUS", String(success));
 #else
-        success = processor->publish(topic, storage.sanitize(result));
+        success = processor->publish(topic, Utils::storage.sanitize(result));
         Utils::log("PUBLISHING STATUS", String(success));
 #endif
     }
@@ -1252,7 +1252,7 @@ bool DeviceManager::publishDeviceList()
     String output;
     serializeJson(doc, output);
     Blue.log(output, LoggingDetails::PAYLOAD);
-    return processor->publish(AI_DEVICE_LIST_EVENT, storage.sanitize(output).c_str());
+    return processor->publish(AI_DEVICE_LIST_EVENT, Utils::storage.sanitize(output).c_str());
 }
 
 /**

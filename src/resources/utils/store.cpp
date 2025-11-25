@@ -2,6 +2,7 @@
 
 PayloadStore::PayloadStore()
 {
+    logMutex = xSemaphoreCreateMutex();
 }
 
 bool PayloadStore::push(String topic, String payload)
@@ -12,7 +13,6 @@ bool PayloadStore::push(String topic, String payload)
     }
     uint64_t addPosition = Storage.appendln(storeFile, sanitize(topic + "|" + payload));
     return addPosition > 0;
-    // return Storage.appendlnAsync(storeFile, sanitize(topic + "|" + payload));
 }
 
 void PayloadStore::resetStorageFile()
@@ -135,6 +135,87 @@ uint32_t PayloadStore::countEntries()
     unsigned long pos = getPopPosition();
     uint32_t count = Storage.countLines(storeFile, pos);
     return count;
+}
+
+void PayloadStore::spawnFlushTask()
+{
+    // If a flush task is already running, do nothing
+    if (flushTaskHandle != nullptr)
+        return;
+
+    xTaskCreatePinnedToCore(
+        PayloadStore::flushTask,
+        "LogFlush",
+        4096,
+        this,
+        tskIDLE_PRIORITY + 1,
+        &flushTaskHandle,
+        1 // run on core 1
+    );
+}
+
+void PayloadStore::flushTask(void *param)
+{
+    PayloadStore *store = static_cast<PayloadStore *>(param);
+    store->flushToFile();
+    store->flushTaskHandle = nullptr; // signal it's done
+    vTaskDelete(nullptr);
+}
+
+void PayloadStore::flushToFile()
+{
+    if (!Storage.sdCardPresent())
+        return;
+
+    std::vector<String> localCopy;
+
+    // Lock buffer and copy entries
+    xSemaphoreTake(logMutex, portMAX_DELAY);
+    localCopy.swap(logBuffer);
+    xSemaphoreGive(logMutex);
+
+    if (localCopy.empty())
+        return;
+
+    // Check if file is too large → rotate
+    uint64_t size = Storage.fileSize(logFile);
+    if (size > MAX_LOG_SIZE)
+    {
+        Storage.overwrite(logFile.c_str(), ""); // truncate
+    }
+
+    // Write all buffered lines to SD
+    for (auto &line : localCopy)
+    {
+        Storage.appendln(logFile, line);
+    }
+
+    Serial.printf("Log flush complete: %d lines written.\n", (int)localCopy.size());
+}
+
+uint32_t PayloadStore::log(String message)
+{
+    if (LOG_TO_FILE || !Storage.sdCardPresent())
+    {
+        return 0;
+    }
+
+    if (message.isEmpty())
+    {
+        return 0;
+    }
+
+    xSemaphoreTake(logMutex, portMAX_DELAY);
+    logBuffer.push_back(sanitize(message));
+    size_t current = logBuffer.size();
+    xSemaphoreGive(logMutex);
+    // Trigger async flush when buffer grows
+    if (current >= MAX_PAYLOADS)
+    {
+        spawnFlushTask();
+    }
+
+    return current;
 }
 
 uint8_t PayloadStore::popOfflineCollection(uint8_t size, unsigned long delay)

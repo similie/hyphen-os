@@ -2,10 +2,21 @@
 #define _PAYLOAD_STORE_H
 #include <Hyphen.h>
 // #include <vector>
+#define LOG_FILE_NAME "hyphen-logs.txt"
+
 class PayloadStore
 {
 private:
+    static const uint64_t MAX_LOG_SIZE = 1000000;
+    static const bool LOG_TO_FILE = true;
+    String logFile = String(LOG_FILE_NAME);
     const uint8_t MAX_PAYLOADS = 10;
+    std::vector<String> logBuffer;
+    SemaphoreHandle_t logMutex = nullptr;
+    TaskHandle_t flushTaskHandle = nullptr;
+    static void flushTask(void *param);
+    void flushToFile();
+
     const String positionFile = "position.txt";
     const String storeFile = "popStorage.txt";
     const char *popKey = "pop_key";
@@ -18,6 +29,7 @@ private:
 
 public:
     PayloadStore();
+    void spawnFlushTask();
     bool push(String, String);
     String sanitize(const String &in)
     {
@@ -26,7 +38,7 @@ public:
         s.replace("\n", "");
         return s;
     };
-
+    uint32_t log(String);
     uint8_t popOneOffline();
     uint32_t countEntries();
     String *pop(uint8_t);
