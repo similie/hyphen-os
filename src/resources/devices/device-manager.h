@@ -58,7 +58,7 @@ private:
     int storedRecords = 0;
     const unsigned int CONNECTION_MAX_ATTEMPT_THRESHOLD = 20;
     const unsigned int CONNECTION_MIN_ATTEMPT_THRESHOLD = 10;
-    const int LOW_POWER_MODE_CHECK_INTERVAL = 3; // minutes
+    const int LOW_POWER_MODE_CHECK_INTERVAL = 15; // minutes
     void offlineModeCheck();
     void radioUp();
     void radioDown(int);
