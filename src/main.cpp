@@ -41,8 +41,8 @@ void setup()
   Time.restoreTimeFromPersist();
   // our cellular and wifi stacks use mbedtls, so we need to set our own
   // memory allocation functions before we init those stacks
-  // mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
-  //                                  esp_mbedtls_my_free);
+  mbedtls_platform_set_calloc_free(esp_mbedtls_my_calloc,
+                                   esp_mbedtls_my_free);
   // the bootstrapping may take a while, so we automate the watchdog
   Watchdog.automatic();
   delay(1000); // wait for the system to settle
