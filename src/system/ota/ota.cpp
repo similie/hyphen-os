@@ -244,7 +244,8 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     Hyphen.publish(ackTopic, "{\"status\":\"started\"}");
 
     otaRunning = true;
-    if (!maintainConnection())
+    bool maintainConn = maintainConnection();
+    if (!maintainConn)
     {
         Hyphen.hyConnect().pause();
     }
@@ -273,6 +274,10 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":404,\"error\":\"Host Not found\"}");
         otaRunning = false;
+        if (!maintainConn)
+        {
+            Hyphen.hyConnect().resume();
+        }
         return;
     }
 
@@ -283,6 +288,10 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":411,\"error\":\"Content Length Required\"}");
         otaRunning = false;
+        if (!maintainConn)
+        {
+            Hyphen.hyConnect().resume();
+        }
         return;
     }
 
@@ -292,6 +301,10 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         http.stop();
         Hyphen.publish(ackTopic, "{\"status\":\"failed\",\"code\":507,\"error\":\"Insufficient Storage\"}");
         otaRunning = false;
+        if (!maintainConn)
+        {
+            Hyphen.hyConnect().resume();
+        }
         return;
     }
 
@@ -322,7 +335,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
                 {
                     lastProgressBytes = written;
                     Utils::log(UTILS_LOG_TAG, StringFormat("… %d/%d bytes\n", written, contentLength));
-                    if (maintainConnection())
+                    if (maintainConn)
                     {
                         Hyphen.publish(ackTopic, "{\"status\":\"progress\", \"progress\":" + String(written * 100 / contentLength) + "}");
                     }
@@ -354,7 +367,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     if (Update.end() && Update.isFinished())
     {
         Utils::log(UTILS_LOG_TAG, "✅ OTA successful, rebooting...");
-        if (maintainConnection())
+        if (maintainConn)
         {
             Hyphen.publish(ackTopic, "{\"status\":\"rebooting\"}");
         }
@@ -368,7 +381,7 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     else
     {
         Utils::log(UTILS_LOG_TAG, "❌ OTA failed: %d\n", Update.getError());
-        if (!maintainConnection())
+        if (!maintainConn)
         {
             Hyphen.hyConnect().resume();
         }

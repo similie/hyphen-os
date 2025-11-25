@@ -43,7 +43,6 @@
 const size_t DEVICE_COUNT = 5;
 const size_t DEVICE_AGGR_COUNT = SEVEN;
 // Ticker     _keepAliveTicker;
-
 class DeviceManager
 {
 private:
