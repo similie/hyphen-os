@@ -361,8 +361,9 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
         char buildBuffer[BUILD_ID_MAX_LEN] = {0};
         strncpy(buildBuffer, buildid, BUILD_ID_MAX_LEN - 1);
         Persist.put(PERSISTENCE_KEY, buildBuffer);
+
         coreDelay(1000);
-        ESP.restart();
+        Hyphen.reset();
     }
     else
     {

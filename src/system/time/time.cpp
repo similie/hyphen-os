@@ -5,11 +5,95 @@ extern const uint8_t ca_cert_bundle_end[] asm("_binary_data_crt_x509_crt_bundle_
 
 TimeClass::TimeClass()
 {
+    persist.begin("hyphen_time");
 }
 
 float TimeClass::tzOffset()
 {
     return tz;
+}
+
+bool TimeClass::storeTimeToPersist()
+{
+    if (!isSynced())
+    {
+        return false;
+    }
+    unsigned long currentUnix = now(); // your class’s now(), returns 0 if failed
+    if (currentUnix == 0)
+    {
+        // no valid time to store
+        return false;
+    }
+    unsigned long uptimeMs = millis(); // or esp_timer_get_time()/1000
+
+    persist.put("lastUnixTime", currentUnix);
+    persist.put("lastUptimeMs", uptimeMs);
+    persist.put("timeValid", true);
+    Log.noticeln("Time stored for persist: unix=%lu, uptimeMs=%lu", currentUnix, uptimeMs);
+
+    return true;
+}
+bool TimeClass::restoreTimeFromPersist()
+{
+    bool timeValid = false;
+    persist.get("timeValid", timeValid);
+    if (!timeValid)
+    {
+        synced = false;
+        return false;
+    }
+    persist.put("timeValid", false); // Invalidate after reading
+    unsigned long storedUnix = 0;
+    persist.get("lastUnixTime", storedUnix);
+    unsigned long storedUptimeMs = 0;
+    persist.get("lastUptimeMs", storedUptimeMs);
+
+    if (storedUnix == 0 || storedUptimeMs == 0)
+    {
+        synced = false;
+        return false;
+    }
+
+    unsigned long nowUptimeMs = millis();
+    unsigned long deltaMs = nowUptimeMs - storedUptimeMs;
+    unsigned long deltaSec = deltaMs / 1000;
+    unsigned long approxUnix = storedUnix + deltaSec;
+
+    // Apply approximate time to system
+    setSystemTime(approxUnix);
+    synced = false;
+    volatileTimeRestored = true;
+    lastRestoreTimeUnix = approxUnix;
+    lastRestoreUptimeMs = nowUptimeMs;
+
+    Log.noticeln("Time restored from persist: approxUnix=%lu (stored=%lu + delta %lu ms)",
+                 approxUnix, storedUnix, deltaMs);
+
+    // 1) Check age of stored timestamp
+    unsigned long ageSeconds = approxUnix - storedUnix;
+    if (ageSeconds > MAX_ACCEPTABLE_AGE_SEC)
+    {
+        Log.warningln("Restored time is older than tolerance (%lu sec > %lu sec)",
+                      ageSeconds, (unsigned long)MAX_ACCEPTABLE_AGE_SEC);
+        synced = false;
+        return false;
+    }
+
+    // 2) Check drift potential
+    // define a conservative worst‐case drift rate, e.g., 100 ppm = 0.0001
+    const float worstCaseDriftRate = 0.0001f; // i.e., 100 ppm
+    float maxDriftSec = deltaSec * worstCaseDriftRate;
+    if (maxDriftSec > MAX_DRIFT_SEC)
+    {
+        Log.warningln("Possible drift exceeds tolerance (~%.2f sec > %lu sec)",
+                      maxDriftSec, (unsigned long)MAX_DRIFT_SEC);
+        synced = false;
+        return false;
+    }
+
+    // If we get here, the restored time is plausible
+    return true;
 }
 
 void TimeClass::zone(float timezone)
@@ -21,6 +105,11 @@ void TimeClass::zone(float timezone)
 bool TimeClass::isSynced()
 {
     return synced;
+}
+
+bool TimeClass::hasTime()
+{
+    return synced || volatileTimeRestored;
 }
 
 String TimeClass::format(String currentStringTime, const char *formatVal)
@@ -245,17 +334,6 @@ unsigned long TimeClass::getTimeFromHttp(Connection &connection)
     cli.setCACertBundle(ca_cert_bundle_start);
     cli.setInsecure();
     HttpClient httpClient(cli, serverAddress, 443);
-    // Declaration of binary file
-    // extern const uint8_t ca_cert_bundle_start[] asm("_binary_data_crt_x509_crt_bundle_bin_start");
-    // extern const uint8_t ca_cert_bundle_end[] asm("_binary_data_crt_x509_crt_bundle_bin_end");
-    // String certContentC = fm.fileContentsOpen("/worldtimeapi.org.pem");
-    // Serial.println(certContentC);
-    // sslClient.setCACert(certContentC.c_str());
-    // sslClient.setClientRSACert(ca_cert_bundle_start);
-    // sslClient.setClientRSACert
-
-    // sslClient.setInsecure();
-    // Make the HTTP GET request
     httpClient.get(resource);
     // Wait for the response
     httpClient.setTimeout(1000);

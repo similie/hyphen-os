@@ -30,6 +30,8 @@ public:
     bool syncTime();
     bool hasHeartbeat();
     bool ready();
+    unsigned int connectionAttempts();
+    void resetConnectionAttempts();
     void variable(const char *, bool *);
     void variable(const char *, int *);
     void variable(const char *, unsigned int *);
@@ -45,7 +47,6 @@ public:
     void variable(String, unsigned long *);
     void variable(String, double *);
     void variable(String, String *);
-
     // Non-template overloads
     void function(const char *name, std::function<int(const std::string &)> func);
     void function(const std::string, std::function<int(const std::string &)> func);
