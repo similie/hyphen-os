@@ -165,11 +165,23 @@ bool HyphenClass::connect()
 }
 void HyphenClass::reset()
 {
+    Time.storeTimeToPersist();
     ESP.restart();
 }
+
 bool HyphenClass::publish(String topic, String payload)
 {
     return hyphen.publishTopic(topic, payload);
+}
+
+unsigned int HyphenClass::connectionAttempts()
+{
+    return hyphen.getConnectAttempts();
+}
+
+void HyphenClass::resetConnectionAttempts()
+{
+    return hyphen.resetConnectAttempts();
 }
 
 bool HyphenClass::publish(const char *topic, uint8_t *buf, size_t length)

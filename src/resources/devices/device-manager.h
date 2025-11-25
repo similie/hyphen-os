@@ -54,7 +54,11 @@ private:
     bool rebootEvent = false;
     int lowPowerMode = 0;
     bool lowPowerModeSet = false;
+    bool powerSaveMode = false;
     int storedRecords = 0;
+    const unsigned int CONNECTION_MAX_ATTEMPT_THRESHOLD = 20;
+    const unsigned int CONNECTION_MIN_ATTEMPT_THRESHOLD = 10;
+    const int LOW_POWER_MODE_CHECK_INTERVAL = 3; // minutes
     void offlineModeCheck();
     void radioUp();
     void radioDown(int);
@@ -133,7 +137,9 @@ private:
     int setWifi(String value);
     int setApn(String value);
     int setSimPin(String value);
-
+    bool recommendReboot(unsigned int);
+    bool recommendRadioSilence(unsigned int);
+    void recommendMaintenance();
     void setParamsCount();
     bool waitForTrue(bool (DeviceManager::*func)(), DeviceManager *binding, unsigned long time);
     void iterateDevices(void (DeviceManager::*iter)(Device *d), DeviceManager *binding);

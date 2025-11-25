@@ -5,7 +5,9 @@
 #define MINUTE_IN_SECONDS 60
 #define MILLISECOND 1000
 #define NO_VALUE -9999
-#define TIMEZONE_SET 8
+#ifndef TIMEZONE_SET
+#define TIMEZONE_SET 9
+#endif
 #define ATTEMPT_THRESHOLD 3
 
 #define MAX_SEND_TIME 15

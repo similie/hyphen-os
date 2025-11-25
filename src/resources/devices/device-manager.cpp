@@ -64,6 +64,42 @@ DeviceManager::DeviceManager(LocalProcessor *processor, bool debug)
 //////////////////////////////
 /// Public Functions
 //////////////////////////////
+bool DeviceManager::recommendReboot(unsigned int attempts)
+{
+    Utils::log("Connection Attempts For Radio Reboot", String(attempts));
+    return attempts >= CONNECTION_MAX_ATTEMPT_THRESHOLD;
+}
+
+bool DeviceManager::recommendRadioSilence(unsigned int attempts)
+{
+    Utils::log("Connection Attempts For Radio Silence", String(attempts));
+    return attempts >= CONNECTION_MIN_ATTEMPT_THRESHOLD && attempts < CONNECTION_MAX_ATTEMPT_THRESHOLD;
+}
+void DeviceManager::recommendMaintenance()
+{
+    unsigned int attempts = Hyphen.connectionAttempts();
+    if (recommendRadioSilence(attempts))
+    {
+        storedRecords = 0;
+        Utils::log("Entering Low Power Mode for Radio Silence", String(LOW_POWER_MODE_CHECK_INTERVAL));
+        powerSaveMode = true;
+        return radioDown(LOW_POWER_MODE_CHECK_INTERVAL);
+    }
+    // last ditch effort to reboot the system, knowing the records could see
+    // at time drift of a few ms
+    if (recommendReboot(attempts))
+    {
+        if (!Time.isSynced())
+        {
+            Utils::log("Time not synced, skipping reboot", "recommendMaintenance");
+            // there's too much time drift if we haven't synced, resetting connection attempts
+            return Hyphen.resetConnectionAttempts();
+        }
+
+        Hyphen.reset();
+    }
+}
+
 /**
  * @public
  *
@@ -163,7 +199,7 @@ void DeviceManager::setReadCount(unsigned int read_count)
  */
 bool DeviceManager::recommendedMaintence(uint8_t damageCount)
 {
-    if (!Time.isSynced())
+    if (!Time.hasTime())
     {
         return true;
     }
@@ -457,7 +493,7 @@ void DeviceManager::read()
 void DeviceManager::publish()
 {
     // checkBootThreshold();
-    if (!Time.isSynced())
+    if (!Time.hasTime())
     {
         Utils::log("Waiting for time sync", String(attempt_count));
         read_count = 0;
@@ -644,7 +680,14 @@ void DeviceManager::autoLowPowerMode()
 void DeviceManager::offlineModeCheck()
 {
     int lowPowerMode = boots.getLowPowerModeTime();
-    Utils::log("LOW_POWER_MODE", "TIME=" + String(lowPowerMode) + ", records=" + String(storedRecords));
+    Utils::log("LOW_POWER_MODE", "TIME=" + String(lowPowerMode) + ", records=" + String(storedRecords) + ", powerSave=" + String(powerSaveMode) + ", offlineCheck=" + String(boots.lowPowerCheck()));
+    // if we are in power save mode generally due to connectivity issues, check to see if we can exit
+    if (powerSaveMode && boots.lowPowerCheck())
+    {
+        Utils::log("Exiting Low Power Mode", "radioUp");
+        return radioUp();
+    }
+
     if (lowPowerMode == 0)
     {
         return;
@@ -696,6 +739,10 @@ void DeviceManager::publisher()
     {
         Utils::log("SENDING PAYLOAD FAILED. Storing", result);
         storePayload(result, topic);
+        if (!lowPowerModeSet)
+        {
+            recommendMaintenance();
+        }
     }
     clearArray();
     ROTATION++;
@@ -945,6 +992,7 @@ void DeviceManager::radioUp()
     {
         return;
     }
+    powerSaveMode = false;
     lowPowerModeSet = false;
     boots.resetPowerCheck();
     Hyphen.connectionOn();
@@ -965,7 +1013,7 @@ void DeviceManager::radioDown(int lowPowerMode)
  *
  * clearAllDevice
  *
- * Clears the device table and Persistance data
+ * Clears the device table and Persistence data
  *
  * @return size_t
  *
