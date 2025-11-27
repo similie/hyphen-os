@@ -218,13 +218,12 @@ You are free to use, modify, adapt, and integrate it into your own systems — c
 
 ## Related Repositories
 
-| Package / Repo                | Description                                                                                                                                 | Technology           | Link                                                 |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ---------------------------------------------------- |
-| **HyphenConnect**             | Manages WiFi/Cellular connectivity, MQTT connections, device function calls, and remote variables. Powers firmware communications.          | C++ (ESP32/MCU)      | https://github.com/similie/hyphen-connect            |
-| **Hyphen Command Center**     | Web UI for managing your entire device fleet, performing OTA updates, monitoring telemetry, configuring profiles, and provisioning devices. | SvelteKit (Web UI)   | https://github.com/similie/hyphen-command-center     |
-| **Hyphen Command Center API** | REST API that backs the Command Center UI. Fleet management, auth, telemetry, devices, profiles, provisioning flows.                        | Node.js / TypeScript | https://github.com/similie/hyphen-command-center-api |
-| **Hyphen Elemental**          | The hardware schematics Similie uses to for our Hyphen Elemental 4 line of Products.                                                        | PCB Design           | https://github.com/similie/hyphen-elemental          |
-| **Ellipsies**                 | Backend engine powering Command Center API: multi-tenant models, orchestration, permissions, and business logic layer.                      | Node.js / TypeScript | https://github.com/similie/ellipsies                 |
+| Package / Repo | Description | Technology | Link |
+| **HyphenConnect** | Manages WiFi/Cellular connectivity, MQTT connections, device function calls, and remote variables. Powers firmware communications. | C++ (ESP32/MCU) | https://github.com/similie/hyphen-connect |
+| **Hyphen Command Center** | Web UI for managing your entire device fleet, performing OTA updates, monitoring telemetry, configuring profiles, and provisioning devices. | SvelteKit (Web UI) | https://github.com/similie/hyphen-command-center |
+| **Hyphen Command Center API** | REST API that backs the Command Center UI. Fleet management, auth, telemetry, devices, profiles, provisioning flows. | Node.js / TypeScript | https://github.com/similie/hyphen-command-center-api |
+| **Hyphen Elemental** | The hardware schematics Similie uses to for our Hyphen Elemental 4 line of Products. | PCB Design | https://github.com/similie/hyphen-elemental |
+| **Ellipsies** | Backend engine powering Command Center API: multi-tenant models, orchestration, permissions, and business logic layer. | Node.js / TypeScript | https://github.com/similie/ellipsies |
 
 ### About Similie
 
