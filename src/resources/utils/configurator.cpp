@@ -85,6 +85,10 @@ bool Configurator::violatesOccurrences(String value, int occurs)
         return occurs > 1;
     case accelerometer:
         return occurs > 1;
+    case ip_camera:
+        // it would be cool to have more than one
+        // return occurs > 1;
+        return false;
     default:
         return false;
     }
@@ -263,6 +267,8 @@ Device *Configurator::pullDeviceType(String configurationStore[], Bootstrap *boo
         return new Relay(boots);
     case accelerometer:
         return new Accelerometer(boots);
+    case ip_camera:
+        return new IPCamera(boots);
     default:
         return NULL;
     }

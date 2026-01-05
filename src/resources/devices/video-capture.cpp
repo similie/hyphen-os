@@ -38,7 +38,7 @@ VideoCapture::VideoCapture()
  *
  * @return void
  */
-void VideoCapture::publish(JsonObject &writer, uint8_t attempt_count)
+void VideoCapture::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
 
     if (readySend())

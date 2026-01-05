@@ -9,6 +9,7 @@
 #include "resources/heartbeat/heartbeat.h"
 #include "device.h"
 #include "system/ota.h"
+#include "system/device-security.h"
 
 #define ONE 1
 #define TWO 2

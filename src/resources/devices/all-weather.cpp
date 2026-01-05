@@ -56,7 +56,7 @@ void AllWeather::init()
  *
  * @return void
  */
-void AllWeather::publish(JsonObject &writer, uint8_t attempt_count)
+void AllWeather::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     return sdi->publish(writer, attempt_count);
 }

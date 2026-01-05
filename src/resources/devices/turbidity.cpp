@@ -37,7 +37,7 @@ Turbidity::Turbidity()
  *
  * @return void
  */
-void Turbidity::publish(JsonObject &writer, uint8_t attempt_count)
+void Turbidity::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
 }
 

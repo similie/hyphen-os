@@ -52,7 +52,7 @@ void FlowMeter::init()
     configurePin();
 }
 
-void FlowMeter::publish(JsonObject &writer, uint8_t attempt_count)
+void FlowMeter::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     // removeInterrupt();
     for (size_t i = 0; i < PARAM_LENGTH; i++)

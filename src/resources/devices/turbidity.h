@@ -22,7 +22,7 @@ public:
     virtual size_t buffSize();
     virtual void init();
     virtual void restoreDefaults();
-    virtual void publish(JsonObject &writer, uint8_t attempt_count);
+    virtual void publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId);
 };
 
 #endif

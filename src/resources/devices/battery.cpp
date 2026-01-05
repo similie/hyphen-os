@@ -57,7 +57,7 @@ void Battery::restoreDefaults()
  *
  * @return void
  */
-void Battery::publish(JsonObject &writer, uint8_t attempt_count)
+void Battery::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     writer[percentname] = round(getNormalizedSoC());
     writer[voltsname] = getAvgRead();

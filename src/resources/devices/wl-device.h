@@ -83,7 +83,7 @@ public:
     uint8_t maintenanceCount();
     uint8_t paramCount();
     size_t buffSize();
-    void publish(JsonObject &writer, uint8_t attempt_count);
+    void publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId);
 };
 
 #endif

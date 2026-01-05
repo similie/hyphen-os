@@ -46,33 +46,33 @@ void OTAUpdate::runUpdateCallback(OTAUpdate *instance)
     instance->updateReady = true;
 }
 
-String OTAUpdate::getCaCertificate(bool v)
-{
-    size_t ca_len = _binary_src_certs_isrgrootx1_pem_end - _binary_src_certs_isrgrootx1_pem_start;
-    String caContent((const char *)_binary_src_certs_isrgrootx1_pem_start, ca_len);
-    return caContent;
-}
+// String OTAUpdate::getCaCertificate(bool v)
+// {
+//     size_t ca_len = _binary_src_certs_isrgrootx1_pem_end - _binary_src_certs_isrgrootx1_pem_start;
+//     String caContent((const char *)_binary_src_certs_isrgrootx1_pem_start, ca_len);
+//     return caContent;
+// }
 
-// ota.cpp
-const char *OTAUpdate::getCaCertificate()
-{
-    static char *s_ca = nullptr;
-    if (!s_ca)
-    {
-        size_t ca_len = _binary_src_certs_isrgrootx1_pem_end - _binary_src_certs_isrgrootx1_pem_start;
-        s_ca = (char *)malloc(ca_len + 1);
-        memcpy(s_ca, _binary_src_certs_isrgrootx1_pem_start, ca_len);
-        s_ca[ca_len] = '\0'; // ensure PEM is NUL-terminated
-    }
-    return s_ca;
-}
+// // ota.cpp
+// const char *OTAUpdate::getCaCertificate()
+// {
+//     static char *s_ca = nullptr;
+//     if (!s_ca)
+//     {
+//         size_t ca_len = _binary_src_certs_isrgrootx1_pem_end - _binary_src_certs_isrgrootx1_pem_start;
+//         s_ca = (char *)malloc(ca_len + 1);
+//         memcpy(s_ca, _binary_src_certs_isrgrootx1_pem_start, ca_len);
+//         s_ca[ca_len] = '\0'; // ensure PEM is NUL-terminated
+//     }
+//     return s_ca;
+// }
 
 Client &OTAUpdate::getClient(uint16_t port)
 {
     if (port == 443)
     {
         SecureClient &c = Hyphen.hyConnect().newSecureClient();
-        c.setCACert(getCaCertificate());
+        c.setCACert(DeviceSecurity::getCaCertificate());
         return c;
     }
     return Hyphen.hyConnect().newClient();

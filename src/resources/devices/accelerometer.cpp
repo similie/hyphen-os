@@ -144,7 +144,7 @@ void Accelerometer::clearWriter(JsonObject &writer)
 
 // publish() is called at the publish interval (1–15 minutes).
 // It aggregates the buffered data (e.g., averages, min/max values) and writes a JSON payload.
-void Accelerometer::publish(JsonObject &writer, uint8_t attempt_count)
+void Accelerometer::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     if (!readyToRead || sampleIndex == 0)
     {

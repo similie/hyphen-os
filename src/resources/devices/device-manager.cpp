@@ -537,6 +537,7 @@ void DeviceManager::packagePayload(JsonDocument &writer)
     writer["device"] = Hyphen.deviceID();
     writer["target"] = this->ROTATION;
     writer["date"] = Time.format(TIME_FORMAT_ISO8601_FULL);
+    writer["__id"] = DeviceSecurity::makePayloadId(Hyphen.deviceID());
 }
 
 /**
@@ -589,6 +590,7 @@ String DeviceManager::payloadWriter(uint8_t &maintenanceCount)
     // size_t bufferSize = getBufferSize();
     JsonDocument doc;
     packagePayload(doc);
+    String payloadId = doc["__id"] | "";
     for (size_t i = 0; i < this->deviceCount; i++)
     {
         String name = "payload" + (i > 0 ? "-" + String(i) : "");
@@ -597,7 +599,7 @@ String DeviceManager::payloadWriter(uint8_t &maintenanceCount)
         size_t size = this->deviceAggregateCounts[i];
         for (size_t j = 0; j < size; j++)
         {
-            this->devices[i][j]->publish(payload, attempt_count);
+            this->devices[i][j]->publish(payload, attempt_count, payloadId);
             maintenanceCount += this->devices[i][j]->maintenanceCount();
         }
         // payload.end();
