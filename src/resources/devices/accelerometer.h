@@ -48,7 +48,7 @@ public:
     // Overridden Device functions:
     virtual void init();
     virtual void read();
-    virtual void publish(JsonObject &writer, uint8_t attempt_count);
+    virtual void publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId);
     virtual void loop();
     virtual void clear();
     virtual void print();

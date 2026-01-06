@@ -54,7 +54,7 @@ public:
     void init();
     void restoreDefaults();
 
-    void publish(JsonObject &writer, uint8_t attempt_count);
+    void publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId);
     bool on();
     bool off();
 };

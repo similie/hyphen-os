@@ -391,7 +391,7 @@ String WlDevice::getParamName(size_t index)
  *
  * @return void
  */
-void WlDevice::publish(JsonObject &writer, uint8_t attempt_count)
+void WlDevice::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     for (size_t i = 0; i < PARAM_LENGTH; i++)
     {

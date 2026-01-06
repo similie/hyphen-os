@@ -11,10 +11,11 @@
 #include "resources/devices/video-capture.h"
 #include "resources/devices/relay.h"
 #include "resources/devices/accelerometer.h"
+#include "resources/devices/ip-camera.h"
 #include "utils.h"
 
 #define CONFIG_STORAGE_MAX 5
-#define CURRENT_DEVICES_COUNT 12
+#define CURRENT_DEVICES_COUNT 13
 
 #define DEVICE_NAME_INDEX 0
 #define DEVICE_IDENTITY_INDEX 1
@@ -28,7 +29,7 @@
 class Configurator
 {
 private:
-    String devicesAvailable[CURRENT_DEVICES_COUNT] = {"all_weather", "soil_moisture", "rain_gauge", "gps", "battery", "sonic_sensor", "flow_meter", "beco_flow_meter", "video_capture", "rika_airquality", "relay", "accelerometer"};
+    String devicesAvailable[CURRENT_DEVICES_COUNT] = {"all_weather", "soil_moisture", "rain_gauge", "gps", "battery", "sonic_sensor", "flow_meter", "beco_flow_meter", "video_capture", "rika_airquality", "relay", "accelerometer", "ip_camera"};
     enum
     {
         all_weather,
@@ -42,7 +43,8 @@ private:
         video_capture,
         rika_airquality,
         relay,
-        accelerometer
+        accelerometer,
+        ip_camera
     };
     Device *pullDeviceType(String configurationStore[], Bootstrap *boots);
     bool applyDevice(Device *d);

@@ -68,7 +68,7 @@ void RainGauge::read()
  *
  * @return void
  */
-void RainGauge::publish(JsonObject &writer, uint8_t attempt_count)
+void RainGauge::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     errorCount = 0;
     double value = counts * perTipMultiple;

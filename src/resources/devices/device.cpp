@@ -37,7 +37,7 @@ Device::Device()
  *
  * @return void
  */
-void Device::publish(JsonObject &writer, uint8_t attempt_count)
+void Device::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
 }
 

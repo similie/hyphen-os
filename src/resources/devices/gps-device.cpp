@@ -26,7 +26,7 @@ void GpsDevice::init()
 {
 }
 
-void GpsDevice::publish(JsonObject &writer, uint8_t attempt_count)
+void GpsDevice::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
 }
 

@@ -12,6 +12,7 @@
 #include "resources/utils/utils.h"
 #include <Update.h>
 #include "Hyphen.h"
+#include "system/device-security.h"
 /**
  * @brief NEEDS TESTING. This class is used to update the firmware of the device
  *
@@ -19,8 +20,8 @@
  *
  */
 #define BUILD_ID_MAX_LEN 64
-extern const uint8_t _binary_src_certs_isrgrootx1_pem_start[] asm("_binary_src_certs_isrgrootx1_pem_start");
-extern const uint8_t _binary_src_certs_isrgrootx1_pem_end[] asm("_binary_src_certs_isrgrootx1_pem_end");
+// extern const uint8_t _binary_src_certs_isrgrootx1_pem_start[] asm("_binary_src_certs_isrgrootx1_pem_start");
+// extern const uint8_t _binary_src_certs_isrgrootx1_pem_end[] asm("_binary_src_certs_isrgrootx1_pem_end");
 // Externs for your embedded certs
 extern const uint8_t _binary_src_certs_device_cert_pem_start[] asm("_binary_src_certs_device_cert_pem_start");
 extern const uint8_t _binary_src_certs_device_cert_pem_end[] asm("_binary_src_certs_device_cert_pem_end");
@@ -179,8 +180,8 @@ private:
     bool persistenceInitialized = false;
     OTACrypto crypto;
     String receivedPayload = "";
-    String getCaCertificate(bool);
-    const char *getCaCertificate();
+    // String getCaCertificate(bool);
+    // const char *getCaCertificate();
     bool updateReady = false;
     void parseDetailsAndSendUpdate();
     static void runUpdateCallback(OTAUpdate *);

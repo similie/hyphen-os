@@ -101,7 +101,7 @@ bool Relay::off()
  *
  * @return void
  */
-void Relay::publish(JsonObject &writer, uint8_t attempt_count)
+void Relay::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
 }
 
