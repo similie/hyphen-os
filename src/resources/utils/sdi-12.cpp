@@ -488,8 +488,6 @@ void SDI12Device::init()
         pinMode(DEVICE_CONNECTED_PIN, INPUT_PULLUP);
     }
     manager.start();
-    // pinMode(SDI12_PIN, OUTPUT_OPEN_DRAIN);
-    // digitalWrite(SDI12_PIN, HIGH);
 }
 
 /**
