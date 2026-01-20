@@ -931,6 +931,41 @@ void Utils::shift(float value, size_t index, float arr[], size_t size)
  *
  * @return void;
  */
+void Utils::shift(uint32_t value, size_t index, uint32_t arr[], size_t size)
+{
+
+    uint32_t last = arr[index];
+    arr[index] = value;
+    index++;
+
+    while (index < size)
+    {
+        uint32_t temp = arr[index];
+        arr[index] = last;
+        index++;
+        if (index < size)
+        {
+            last = arr[index];
+            arr[index] = temp;
+            index++;
+        }
+    }
+}
+
+/**
+ * @public
+ *
+ * shift
+ *
+ * Helper fuction that inserts an element in asscending order into
+ * the sorted array where we can our median value
+ * @param int value - the value to be inserted
+ * @param size_t index - the index where to insert;
+ * @param int arr[] - the array to insert into
+ * @param size_t size - size of the array
+ *
+ * @return void;
+ */
 void Utils::shift(int value, size_t index, int arr[], size_t size)
 {
 
@@ -1054,6 +1089,33 @@ void Utils::insertValue(long value, long arr[], size_t size)
  *
  * @return void;
  */
+void Utils::insertValue(uint32_t value, uint32_t arr[], size_t size)
+{
+    size_t index = 0;
+
+    uint32_t aggr = arr[index];
+    while (value >= aggr && aggr != NO_VALUE && index < size)
+    {
+        index++;
+        aggr = arr[index];
+    }
+    shift(value, index, arr, size);
+}
+
+/**
+ * @public
+ *
+ * insertValue
+ *
+ * Insert a value into a multidimentional array in sorted order
+ *
+ *
+ * @param int value - the value to be inserted
+ * @param int param - the enum value that represents the param
+ * @param size_t size - the size of the array
+ *
+ * @return void;
+ */
 void Utils::insertValue(int value, int arr[], size_t size)
 {
     size_t index = 0;
@@ -1087,6 +1149,33 @@ long Utils::getMedian(long readparam, long arr[])
     double center = (double)readparam / 2.0;
     int index = ceil(center);
     long value = NO_VALUE;
+    while (value == NO_VALUE && index >= 0)
+    {
+        value = arr[index];
+        index--;
+    }
+    return value;
+}
+
+/**
+ * @public
+ *
+ * getMedian
+ *
+ * Get the middle value or the value toward the zero index
+ * this is not a NO_VALUE
+ *
+ * @param uint32_t readparam - the expected max value
+ * @param uint32_t arr[] - the array of values
+ *
+ * @return uint32_t
+ *
+ */
+uint32_t Utils::getMedian(int readparam, uint32_t arr[])
+{
+    double center = (double)readparam / 2.0;
+    int index = ceil(center);
+    uint32_t value = NO_VALUE;
     while (value == NO_VALUE && index >= 0)
     {
         value = arr[index];

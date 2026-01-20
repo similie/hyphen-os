@@ -234,7 +234,12 @@ Device *Configurator::pullDeviceType(String configurationStore[], Bootstrap *boo
                                 parseIdentity(configurationStore[DEVICE_IDENTITY_INDEX]),
                                 parseIdentity(configurationStore[DEVICE_PIN_INDEX]));
         }
-        else if (configurationStore[DEVICE_IDENTITY_INDEX].equals(""))
+        else if (configurationStore[DEVICE_PIN_INDEX].equals("") && !configurationStore[DEVICE_IDENTITY_INDEX].equals(""))
+        {
+            return new WlDevice(boots, 0,
+                                parseIdentity(configurationStore[DEVICE_IDENTITY_INDEX]));
+        }
+        else if (!configurationStore[DEVICE_IDENTITY_INDEX].equals(""))
         {
             return new WlDevice(boots,
                                 parseIdentity(configurationStore[DEVICE_IDENTITY_INDEX]));

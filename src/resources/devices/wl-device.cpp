@@ -1,279 +1,129 @@
 #include "wl-device.h"
-/**
- * Deconstructor
- */
-WlDevice::~WlDevice()
+
+static uint32_t absDiffU32(uint32_t a, uint32_t b)
 {
+    return (a > b) ? (a - b) : (b - a);
 }
 
-/**
- * Constructor
- *
- * @param Bootstrap boots - the bootstrap object
- */
+static uint32_t medianOfSorted(const uint32_t *v, size_t n)
+{
+    return v[n / 2];
+}
+
+WlDevice::~WlDevice() {}
+
 WlDevice::WlDevice(Bootstrap *boots)
 {
     this->boots = boots;
 }
 
-/**
- * Constructor
- *
- * @param Bootstrap boots - the bootstrap object
- * @param int sendIdentity - the integer the identifies
- *        the specific device instance
- */
 WlDevice::WlDevice(Bootstrap *boots, int sendIdentity)
 {
     this->boots = boots;
     this->sendIdentity = sendIdentity;
 }
 
-/**
- * Constructor
- *
- * @param Bootstrap boots - the bootstrap object
- * @param int sendIdentity - the integer the identifies
- *        the specific device instance
- */
 WlDevice::WlDevice(Bootstrap *boots, int sendIdentity, int readPin)
 {
-    this->readPin = readPin;
     this->boots = boots;
     this->sendIdentity = sendIdentity;
+    this->readPin = readPin;
 }
 
-/**
- * @private
- *
- * getPin
- *
- * Gets the configured pin
- *
- * @return int
- */
+String WlDevice::name()
+{
+    return this->deviceName;
+}
+
 int WlDevice::getPin()
 {
     if (this->readPin != -1)
-    {
         return this->readPin;
-    }
-    else if (digital)
+
+    return digital ? (int)DIG_PIN : (int)AN_PIN;
+}
+
+void WlDevice::setPinMode()
+{
+    const int pin = getPin();
+
+    if (digital)
     {
-        return (int)DIG_PIN;
+        // If your sensor is open-drain, use INPUT_PULLUP instead.
+        pinMode(pin, INPUT);
     }
     else
     {
-        return AN_PIN;
+        pinMode(pin, INPUT);
     }
+
+    // lock in resolved pin so later changes to `digital` don’t surprise you
+    this->readPin = pin;
 }
 
-/**
- * @private
- *
- * saveEEPROM
- *
- * @param WLStruct storage - the config payload needing storage
- *
- * @return void
- */
 void WlDevice::saveEEPROM(WLStruct storage)
 {
     if (saveAddressForWL == 0)
-    {
         return;
-    }
+
     storage.version = 1;
     Persist.put(saveAddressForWL, storage);
 }
 
-/**
- * @private
- *
- * setDigitalCloud
- *
- * Cloud function for setting the device on a digital or
- * analogue pin.
- *
- * @param String read - payload from the particle API
- *
- * @return int
- */
-int WlDevice::setDigitalCloud(String read)
-{
-    int val = (int)atoi(read.c_str());
-    if (val < 0 || val > 1)
-    {
-        return 0;
-    }
-    digital = (bool)val;
-    char saved = WlDevice::isDigital(digital);
-    WLStruct storage = WlDevice::getProm();
-    storage.digital = saved;
-    setPin(digital);
-
-    if (!Utils::validConfigIdentity(storage.version))
-    {
-        storage.calibration = currentCalibration;
-    }
-    saveEEPROM(storage);
-    return 1;
-}
-
-/**
- * @private
- *
- * setCalibration
- *
- * Cloud function for setting the calibration value
- * @param String read - payload from the particle API
- *
- * @return int
- */
-int WlDevice::setCalibration(String read)
-{
-    double val = Utils::parseCloudFunctionDouble(read, uniqueName());
-    if (val == 0)
-    {
-        return 0;
-    }
-
-    currentCalibration = val;
-
-    WLStruct storage = getProm();
-    storage.calibration = currentCalibration;
-    if (!Utils::validConfigIdentity(storage.version))
-    {
-        storage.digital = WlDevice::isDigital(digital);
-    }
-    saveEEPROM(storage);
-    return 1;
-}
-
-/**
- * @private
- *
- * getProm
- *
- * Returns the wl configuration structure
- *
- * @return WlDevice
- */
 WLStruct WlDevice::getProm()
 {
-    WLStruct prom;
+    WLStruct prom{};
     Persist.get(saveAddressForWL, prom);
     return prom;
 }
 
-/**
- * @private
- *
- *
- * setDigital
- *
- * We represent the digital bool as y or n so as to
- * have a value for the default
- *
- * @param bool value
- * @return char - the value for storing in EEPROM
- */
 char WlDevice::setDigital(bool value)
 {
     return value ? 'y' : 'n';
 }
 
-/**
- * @private
- *
- * isDigital
- *
- * Tells us if a config value is digital
- *
- * @param char value - is it digital or analogue
- *
- * @return bool
- */
 bool WlDevice::isDigital(char value)
 {
     if (value == 'y')
-    {
         return true;
-    }
-    else if (value == 'n')
-    {
+    if (value == 'n')
         return false;
+    return DIGITAL_DEFAULT;
+}
+
+bool WlDevice::isSaneCalibration(double cal, bool digitalMode)
+{
+    if (!isfinite(cal))
+        return false;
+
+    if (digitalMode)
+    {
+        // typical: 1/58 ≈ 0.01724
+        return cal > 0.001 && cal < 0.1;
     }
     else
     {
-        return DIGITAL_DEFAULT;
+        return cal > 0.0001 && cal < 10.0;
     }
 }
 
-/**
- * @private
- *
- * setPin
- *
- * Sets the pin based on the digital configuration
- *
- * @param bool digital - ?
- *
- * @return void
- */
-void WlDevice::setPin(bool digital)
-{
-    int pin = getPin();
-    if (digital)
-    {
-        pinMode(pin, INPUT);
-    }
-    else
-    {
-        pinMode(pin, INPUT_PULLDOWN);
-    }
-}
-
-/**
- * @private
- *
- * configSetup
- *
- * Uses the EEPROM-based config and bootstraps the device
- *
- * @return void
- */
-void WlDevice::configSetup()
-{
-    digital = WlDevice::isDigital(this->config.digital);
-    const double calibration = this->config.calibration;
-    currentCalibration = calibration;
-    setPin(digital);
-}
-
-/**
- * @private
- *
- * restoreDefaults
- *
- * Restores the default values
- *
- * @return void
- */
 bool WlDevice::hasSerialIdentity()
 {
     return utils.hasSerialIdentity(this->sendIdentity);
 }
 
-/**
- * @private
- *
- * setCloudFunctions
- *
- * Binds cloud functions with the particle console
- *
- * @return void
- */
+String WlDevice::appendIdentity()
+{
+    return this->hasSerialIdentity() ? String(this->sendIdentity) : "";
+}
+
+String WlDevice::uniqueName()
+{
+    if (this->hasSerialIdentity())
+        return this->name() + String(this->sendIdentity);
+    return this->name();
+}
+
 void WlDevice::setCloudFunctions()
 {
     String appendage = appendIdentity();
@@ -283,228 +133,270 @@ void WlDevice::setCloudFunctions()
     Hyphen.variable("getDistanceCalibration" + appendage, &currentCalibration);
 }
 
-/**
- * @private
- *
- * appendIdentity
- *
- * If there is an integer identity, it concats the id as a string
- *
- * @return String
- */
-String WlDevice::appendIdentity()
+int WlDevice::setDigitalCloud(String read)
 {
-    return this->hasSerialIdentity() ? String(this->sendIdentity) : "";
+    int val = (int)atoi(read.c_str());
+    if (val < 0 || val > 1)
+        return 0;
+
+    digital = (bool)val;
+
+    WLStruct storage = getProm();
+    storage.digital = setDigital(digital);
+
+    // keep existing calibration if migrated/invalid
+    if (!Utils::validConfigIdentity(storage.version))
+        storage.calibration = currentCalibration;
+
+    saveEEPROM(storage);
+
+    // apply immediately
+    setPinMode();
+
+    return 1;
 }
 
-/**
- * @private
- *
- * uniqueName
- *
- * If there is an integer identity, it concats the id with the name, otherwise
- * it simply returns the given name
- *
- * @return String
- */
-String WlDevice::uniqueName()
+int WlDevice::setCalibration(String read)
 {
-    if (this->hasSerialIdentity())
+    double val = Utils::parseCloudFunctionDouble(read, uniqueName());
+    if (val == 0)
+        return 0;
+
+    currentCalibration = val;
+
+    WLStruct storage = getProm();
+    storage.calibration = currentCalibration;
+
+    if (!Utils::validConfigIdentity(storage.version))
+        storage.digital = setDigital(digital);
+
+    saveEEPROM(storage);
+    return 1;
+}
+
+void WlDevice::restoreDefaults()
+{
+    digital = DIGITAL_DEFAULT;
+    currentCalibration = digital ? DEF_DISTANCE_READ_DIG_CALIBRATION : DEF_DISTANCE_READ_AN_CALIBRATION;
+
+    config.calibration = currentCalibration;
+    config.digital = setDigital(digital);
+
+    saveEEPROM(config);
+    setPinMode();
+}
+
+void WlDevice::configSetup()
+{
+    digital = isDigital(this->config.digital);
+
+    double cal = this->config.calibration;
+    if (!isSaneCalibration(cal, digital))
     {
-        return this->name() + String(this->sendIdentity);
+        restoreDefaults();
+        cal = this->config.calibration;
     }
-    return this->name();
+
+    currentCalibration = cal;
+    setPinMode();
 }
 
-long WlDevice::getReadValue()
+uint32_t WlDevice::readPulseUs(uint32_t timeoutUs)
 {
-    long read = 0;
+    // Single-source-of-truth digital read:
+    // pulseIn returns 0 on timeout (no pulse seen)
+
+    const int pin = getPin();
+    const uint32_t start = micros();
+
+    // 1) wait for any current HIGH to end
+    while (digitalRead(pin) == HIGH)
+    {
+        if ((micros() - start) > timeoutUs)
+            return 0;
+    }
+
+    return (uint32_t)pulseIn(pin, HIGH, timeoutUs);
+}
+
+uint32_t WlDevice::getReadValue()
+{
     if (digital)
     {
-        read = pulseIn(DIG_PIN, HIGH);
+        constexpr uint32_t timeoutUs = 200000;
+        return readPulseUs(timeoutUs);
     }
     else
     {
-        read = analogRead(AN_PIN);
+        return (uint32_t)analogRead(getPin());
     }
-    return read;
 }
-
-/**
- * @private
- *
- * readWL
- *
- *  Performs the actual work for reading the wl sensor
- *
- * @return int
- */
-int WlDevice::readWL()
+uint32_t WlDevice::readWL()
 {
-    long timeout = 1000;
-    size_t doCount = 5;
-    long lastTime = millis();
-    long reads[doCount];
+    constexpr size_t targetSamples = 7;    // was 3
+    constexpr uint32_t timeoutUs = 200000; // match getReadValue
+    const uint32_t minUs = 800;
+    const uint32_t maxUs = 60000; // your clamp
 
-    for (size_t i = 0; i < doCount; i++)
+    uint32_t reads[targetSamples];
+    size_t count = 0;
+
+    uint32_t startMs = millis();
+    while (count < targetSamples && (millis() - startMs) < 900)
     {
-        reads[i] = NO_VALUE;
-    }
+        uint32_t v = getReadValue();
 
-    for (size_t i = 0; i < doCount; i++)
-    {
-        long currentTime = millis();
-        long read = getReadValue();
-
-        utils.insertValue(read, reads, doCount);
-        // break off it it is taking too long
-        if (currentTime - lastTime > timeout)
+        if (digital)
         {
-            break;
+            if (v == 0)
+            {
+                delay(8);
+                continue;
+            }
+            if (v < minUs || v > maxUs)
+            {
+                delay(8);
+                continue;
+            }
         }
-        // we pop a quick delay to let the sensor, breath a bit
-        delay(50);
-        lastTime = millis();
+
+        reads[count++] = v;
+        delay(18);
     }
 
-    int pw = utils.getMedian(doCount, reads);
-    // or we can take the middle value
-    return round(pw * currentCalibration);
+    if (count == 0)
+        return 0;
+
+    // sort reads[0..count)
+    for (size_t i = 0; i < count; i++)
+        for (size_t j = i + 1; j < count; j++)
+            if (reads[j] < reads[i])
+            {
+                uint32_t t = reads[i];
+                reads[i] = reads[j];
+                reads[j] = t;
+            }
+
+    if (!digital)
+    {
+        double scaled = (double)reads[count / 2] * currentCalibration;
+        return (uint32_t)lround(scaled);
+    }
+
+    // ---- Cluster selection for digital pulses ----
+    // Group pulses that are within `tolUs` of each other.
+    constexpr uint32_t tolUs = 180; // adjust 120–250 depending on noise
+
+    // Find best cluster by counting membership around each candidate.
+    size_t bestIdx = 0;
+    size_t bestCount = 0;
+
+    for (size_t i = 0; i < count; i++)
+    {
+        size_t c = 1;
+        for (size_t j = 0; j < count; j++)
+        {
+            if (i == j)
+                continue;
+            if (absDiffU32(reads[i], reads[j]) <= tolUs)
+                c++;
+        }
+
+        if (c > bestCount)
+        {
+            bestCount = c;
+            bestIdx = i;
+        }
+        else if (c == bestCount && lastGoodPwUs != 0)
+        {
+            // tie-break: choose closer to last good
+            if (absDiffU32(reads[i], lastGoodPwUs) < absDiffU32(reads[bestIdx], lastGoodPwUs))
+                bestIdx = i;
+        }
+    }
+
+    // Collect members of the winning cluster into tmp
+    uint32_t tmp[targetSamples];
+    size_t k = 0;
+    for (size_t i = 0; i < count; i++)
+        if (absDiffU32(reads[i], reads[bestIdx]) <= tolUs)
+            tmp[k++] = reads[i];
+
+    // tmp is already mostly sorted because reads is sorted, but keep it safe:
+    for (size_t i = 0; i < k; i++)
+        for (size_t j = i + 1; j < k; j++)
+            if (tmp[j] < tmp[i])
+            {
+                uint32_t t = tmp[i];
+                tmp[i] = tmp[j];
+                tmp[j] = t;
+            }
+
+    uint32_t pw = medianOfSorted(tmp, k);
+    lastGoodPwUs = pw;
+
+    double cm = (double)pw * currentCalibration;
+    Serial.printf("pw_us=%lu cm=%.2f cal=%.10f cluster=%u/%u\n",
+                  (unsigned long)pw, cm, currentCalibration, (unsigned)k, (unsigned)count);
+
+    return (uint32_t)lround(cm);
 }
 
 String WlDevice::getParamName(size_t index)
 {
     String param = readParams[index];
     if (this->hasSerialIdentity())
-    {
         return param + StringFormat("_%d", sendIdentity);
-    }
     return param;
 }
 
-/**
- * @public
- *
- * publish
- *
- * Called during a publish event
- *
- * @return void
- */
 void WlDevice::publish(JsonObject &writer, uint8_t attempt_count, const String &payloadId)
 {
     for (size_t i = 0; i < PARAM_LENGTH; i++)
     {
         String param = getParamName(i);
         int median = utils.getMedian(attempt_count, VALUE_HOLD[i]);
+
         if (median == 0)
-        {
             maintenanceTick++;
-        }
 
         writer[utils.stringConvert(param)] = median;
         Log.info("Param=%s has median %d", utils.stringConvert(param), median);
     }
 }
 
-/**
- * @public
- *
- * name
- *
- * Returns the device name
- *
- * @return String
- */
-String WlDevice::name()
-{
-    return this->deviceName;
-}
-
-/**
- * @public
- *
- * restoreDefaults
- *
- * Restores the default values
- *
- * @return void
- */
-void WlDevice::restoreDefaults()
-{
-    digital = DIGITAL_DEFAULT;
-    setPin(digital);
-    currentCalibration = digital ? DEF_DISTANCE_READ_DIG_CALIBRATION : DEF_DISTANCE_READ_AN_CALIBRATION;
-    this->config.calibration = currentCalibration;
-    this->config.digital = digital;
-    saveEEPROM(this->config);
-}
-
-/**
- * @public
- *
- * init
- *
- * Init function for device setup
- *
- * @return void
- */
 void WlDevice::init()
 {
-    // setup
     setCloudFunctions();
+
     Utils::log("WL_BOOT_ADDRESS REGISTRATION", this->uniqueName());
     saveAddressForWL = boots->registerAddress(this->uniqueName(), sizeof(WLStruct));
     Utils::log("WL_BOOT_ADDRESS " + this->uniqueName(), String(saveAddressForWL));
+
     this->config = getProm();
     if (!Utils::validConfigIdentity(this->config.version))
     {
         restoreDefaults();
+        this->config = getProm(); // reload after restore
     }
+
     configSetup();
 }
 
-/**
- * @public
- *
- * read
- *
- * Calls the logic for performing a read event
- *
- * @return void
- */
 void WlDevice::read()
 {
-    int read = readWL();
-    Log.info("WL %d", read);
+    uint32_t cm = readWL();
+    Serial.printf("WL cm=%d\n", (int)cm);
+    Log.info("WL %d", (int)cm);
+
     for (size_t i = 0; i < PARAM_LENGTH; i++)
     {
-        utils.insertValue(read, VALUE_HOLD[i], boots->getMaxVal());
+        utils.insertValue((int)cm, VALUE_HOLD[i], boots->getMaxVal());
     }
 }
 
-/**
- * @public
- *
- * loop
- *
- * No functionality required for this device
- *
- * @return void
- */
-void WlDevice::loop()
-{
-}
+void WlDevice::loop() {}
 
-/**
- * @public
- *
- * clear
- *
- * Clears the VALUE_HOLD array
- *
- * @return void
- */
 void WlDevice::clear()
 {
     for (size_t i = 0; i < PARAM_LENGTH; i++)
@@ -516,63 +408,28 @@ void WlDevice::clear()
     }
 }
 
-/**
- * @public
- *
- * print
- *
- * Prints the VALUE_HOLD array
- *
- * @return void
- */
 void WlDevice::print()
 {
     for (size_t i = 0; i < PARAM_LENGTH; i++)
     {
         for (size_t j = 0; j < boots->getMaxVal(); j++)
         {
-            Log.info("PARAM VALUES FOR %s of iteration %d and value %d", utils.stringConvert(readParams[i]), j, VALUE_HOLD[i][j]);
+            Log.info("PARAM VALUES FOR %s of iteration %d and value %d",
+                     utils.stringConvert(readParams[i]), (int)j, (int)VALUE_HOLD[i][j]);
         }
     }
 }
 
-/**
- * @public
- *
- * buffSize
- *
- * How many bytes do we need for this device
- *
- * @return size_t
- */
 size_t WlDevice::buffSize()
 {
     return 40;
 }
 
-/**
- * @public
- *
- * paramCount
- *
- * How many parameters are there for this device
- *
- * @return uint8_t
- */
 uint8_t WlDevice::paramCount()
 {
-    return PARAM_LENGTH;
+    return (uint8_t)PARAM_LENGTH;
 }
 
-/**
- * @public
- *
- * maintenanceCount
- *
- * How many parameters are sending valid data
- *
- * @return uint8_t
- */
 uint8_t WlDevice::maintenanceCount()
 {
     uint8_t maintenance = this->maintenanceTick;

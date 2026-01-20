@@ -50,8 +50,8 @@ bool WssSocketClient::connect(SecureClient &tls,
             setErr("no_ca_certificate");
             return false;
         }
-        Serial.printf("Using CA Certificate %s: ", host);
-        Serial.println(caCert);
+        // Serial.printf("Using CA Certificate %s: ", host);
+        // Serial.println(caCert);
         tls.setCACert(caCert);
     }
 
