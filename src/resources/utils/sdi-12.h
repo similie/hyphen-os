@@ -11,7 +11,9 @@
 #include <stdint.h>
 
 #define SINGLE_SAMPLE true
+#ifndef READ_ON_LOW_ONLY
 #define READ_ON_LOW_ONLY false
+#endif
 #define DEVICE_CONNECTED_PIN 13
 #define SDI12_PIN 15
 #define SDI12_WAIT_READ 300
