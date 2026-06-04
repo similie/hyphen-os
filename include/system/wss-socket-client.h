@@ -41,4 +41,10 @@ private:
 
     // internal helpers
     void handlePing_(SecureClient &tls, const uint8_t *payload, size_t len);
+
+    // Bounded wait for at least one inbound byte. Returns false if the socket
+    // dropped or the per-frame deadline elapsed, so poll() can tear down a
+    // half-open socket instead of spinning forever (which would stall the main
+    // loop and trip the hardware watchdog).
+    bool awaitByte_(SecureClient &tls, uint32_t start, uint32_t timeoutMs);
 };

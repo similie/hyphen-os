@@ -1,4 +1,5 @@
 #include "system/fuel.h"
+#include "resources/utils/aggregation.h"
 
 FuelGaugeClass::FuelGaugeClass() : ina219_battery(0x41), ina219_solar(0x40)
 {
@@ -103,18 +104,18 @@ void FuelGaugeClass::_updateCalibration(float v, uint8_t cellCount)
 
 float FuelGaugeClass::getVCell()
 {
-    float maxV = ina219_battery.getBusVoltage_V();
-    Serial.printf("getVCell: initial maxV = %.2f\n", maxV);
-    for (uint8_t i = 0; i < 0; i++)
+    // Sample several times and take the median. The previous loop used the
+    // condition `i < 0`, so it never executed and returned a single noisy
+    // reading — driving false low-power/brownout decisions in the field. Median
+    // (not max) so a transient spike can't read as a fuller battery than it is.
+    const uint8_t SAMPLES = 5;
+    float samples[SAMPLES];
+    for (uint8_t i = 0; i < SAMPLES; i++)
     {
-        float v = ina219_battery.getBusVoltage_V();
-        if (v > maxV)
-        {
-            maxV = v;
-        }
-        delay(10); // allow some time for the INA219 to stabilize
+        samples[i] = ina219_battery.getBusVoltage_V();
+        delay(10); // allow the INA219 to settle between samples
     }
-    return maxV;
+    return hyphen::agg::median(samples, SAMPLES);
 }
 
 float FuelGaugeClass::getSolarVCell()
