@@ -60,9 +60,9 @@ void setup()
   FuelGauge.init();
   manager.init();
   disableCore0WDT();
-  // stop the automatic watchdog
-  Watchdog.stop();
-  // we then start it manually to run off the main loop
+  // The feeder task started by Watchdog.automatic() keeps running; start() just
+  // arms liveness gating so a wedged main loop (rather than a slow boot) is what
+  // stops the pulses. No stop()/recreate handoff -> no window where nothing pulses.
   Watchdog.start();
 }
 // loop() runs over and over again, as quickly as it can execute
