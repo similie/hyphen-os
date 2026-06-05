@@ -1,0 +1,2 @@
+# Serial capture logs are large, ephemeral test artifacts — keep the tooling, not the output.
+*.log
