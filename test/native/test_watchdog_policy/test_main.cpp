@@ -46,6 +46,78 @@ void test_armed_rollover_safe() {
   TEST_ASSERT_TRUE(shouldFeed(/*armed=*/true, lastHb, now, LIVENESS));
 }
 
+// --- richer FeedInputs decision: bounded boot grace + productivity backstop ---
+
+using hyphen::watchdog::FeedInputs;
+
+static const uint32_t GRACE = 120000;
+static const uint32_t PRODUCTIVITY = 7200000;  // 2h
+
+// Helper: an armed, healthy device (fresh heartbeat + fresh productivity).
+static FeedInputs healthy(uint32_t now) {
+  FeedInputs in;
+  in.armed = true;
+  in.now = now;
+  in.lastHeartbeat = now;
+  in.livenessTimeoutMs = LIVENESS;
+  in.lastProductive = now;
+  in.productivityTimeoutMs = PRODUCTIVITY;
+  in.graceMaxMs = GRACE;
+  return in;
+}
+
+void test_bounded_grace_feeds_within_window() {
+  FeedInputs in;
+  in.armed = false;
+  in.graceStart = 1000;
+  in.graceMaxMs = GRACE;
+  in.now = 1000 + GRACE - 1;
+  TEST_ASSERT_TRUE(shouldFeed(in));
+}
+
+void test_bounded_grace_stops_after_window() {
+  FeedInputs in;
+  in.armed = false;
+  in.graceStart = 1000;
+  in.graceMaxMs = GRACE;
+  in.now = 1000 + GRACE + 1;  // hung bootstrap that never armed
+  TEST_ASSERT_FALSE(shouldFeed(in));
+}
+
+void test_unbounded_grace_when_max_zero() {
+  FeedInputs in;
+  in.armed = false;
+  in.graceStart = 0;
+  in.graceMaxMs = 0;  // legacy: feed forever during grace
+  in.now = 99999999u;
+  TEST_ASSERT_TRUE(shouldFeed(in));
+}
+
+void test_productive_device_is_fed() {
+  TEST_ASSERT_TRUE(shouldFeed(healthy(1000000)));
+}
+
+void test_unproductive_device_is_not_fed() {
+  // loop alive (fresh heartbeat) but no successful publish for > 2h -> power-cycle
+  FeedInputs in = healthy(10000000);
+  in.lastProductive = in.now - (PRODUCTIVITY + 1);
+  TEST_ASSERT_FALSE(shouldFeed(in));
+}
+
+void test_productivity_disabled_ignores_staleness() {
+  FeedInputs in = healthy(10000000);
+  in.productivityTimeoutMs = 0;               // disabled
+  in.lastProductive = in.now - 99999999u;     // ancient
+  TEST_ASSERT_TRUE(shouldFeed(in));
+}
+
+void test_dead_loop_not_fed_even_if_recently_productive() {
+  // liveness dominates: a wedged main loop resets regardless of productivity
+  FeedInputs in = healthy(10000000);
+  in.lastHeartbeat = in.now - (LIVENESS + 1);
+  TEST_ASSERT_FALSE(shouldFeed(in));
+}
+
 int main(int, char**) {
   UNITY_BEGIN();
   RUN_TEST(test_grace_mode_always_feeds_even_when_stale);
@@ -53,5 +125,12 @@ int main(int, char**) {
   RUN_TEST(test_armed_stops_feeding_when_wedged);
   RUN_TEST(test_armed_boundary_is_not_fed);
   RUN_TEST(test_armed_rollover_safe);
+  RUN_TEST(test_bounded_grace_feeds_within_window);
+  RUN_TEST(test_bounded_grace_stops_after_window);
+  RUN_TEST(test_unbounded_grace_when_max_zero);
+  RUN_TEST(test_productive_device_is_fed);
+  RUN_TEST(test_unproductive_device_is_not_fed);
+  RUN_TEST(test_productivity_disabled_ignores_staleness);
+  RUN_TEST(test_dead_loop_not_fed_even_if_recently_productive);
   return UNITY_END();
 }

@@ -30,10 +30,20 @@ void WatchdogClass::ensureTask()
 
 void WatchdogClass::automatic()
 {
-    // Boot / bootstrapping: feed unconditionally until start() arms gating.
+    // Boot / bootstrapping: feed unconditionally until start() arms gating — but
+    // only up to _bootGraceMs, so a hung bootstrap still trips the dog.
     _armed = false;
+    _graceStartMs = millis();
     _lastHeartbeatMs = millis();
+    _lastProductiveMs = millis(); // give the first publish a full productivity window
     ensureTask();
+}
+
+void WatchdogClass::productive()
+{
+    // End-to-end progress (a successful publish). Refreshes the productivity
+    // backstop so a healthy device is never power-cycled by it.
+    _lastProductiveMs = millis();
 }
 
 void WatchdogClass::start()
@@ -87,14 +97,22 @@ void WatchdogClass::_taskFunc(void *pv)
     auto *wd = static_cast<WatchdogClass *>(pv);
     while (true)
     {
-        if (hyphen::watchdog::shouldFeed(wd->_armed, wd->_lastHeartbeatMs,
-                                         millis(), wd->_livenessTimeoutMs))
+        hyphen::watchdog::FeedInputs in;
+        in.armed = wd->_armed;
+        in.now = millis();
+        in.graceStart = wd->_graceStartMs;
+        in.graceMaxMs = wd->_bootGraceMs;
+        in.lastHeartbeat = wd->_lastHeartbeatMs;
+        in.livenessTimeoutMs = wd->_livenessTimeoutMs;
+        in.lastProductive = wd->_lastProductiveMs;
+        in.productivityTimeoutMs = wd->_productivityTimeoutMs;
+        if (hyphen::watchdog::shouldFeed(in))
         {
             wd->_pulse();
         }
         // If we did NOT feed, the pin stays LOW and the external watchdog will
-        // reset the board once its hardware window elapses — that is the wedge
-        // recovery path, and it is intentional.
+        // reset the board once its hardware window elapses — that is the
+        // hang/stall recovery path, and it is intentional.
         vTaskDelay(wd->_periodTicks);
     }
 }

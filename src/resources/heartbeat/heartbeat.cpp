@@ -1,4 +1,5 @@
 #include "heartbeat.h"
+#include "system/boot_info.h"
 
 HeartBeat::~HeartBeat()
 {
@@ -30,6 +31,10 @@ void HeartBeat::setSystemDeets(JsonObject &writer)
     writer["up"] = uptime;
     String version = String(BUILD_VERSION);
     writer["v"] = version;
+    // Reset visibility: why we last rebooted + how many times. Lets the fleet see
+    // whether the hardware watchdog / brownout is firing in the field.
+    writer["rst"] = hyphen::boot::resetReasonStr();
+    writer["boots"] = (long)hyphen::boot::bootCount();
 }
 void HeartBeat::setPowerDeets(JsonObject &writer)
 {

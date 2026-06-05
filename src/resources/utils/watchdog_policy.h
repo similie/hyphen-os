@@ -27,5 +27,44 @@ inline bool shouldFeed(bool armed, uint32_t lastHeartbeat, uint32_t now,
   return !hyphen::timing::timedOut(lastHeartbeat, now, livenessTimeoutMs);
 }
 
+// Richer decision used by the live feeder. Two failure classes the simple
+// liveness check above can't catch:
+//   - a bootstrap that hangs BEFORE the loop arms gating (grace would otherwise
+//     feed forever) -> bound the grace window.
+//   - "alive but unproductive": the loop keeps heartbeating but the device has
+//     made no end-to-end progress (no successful publish) for a long time, e.g.
+//     a wedged modem -> stop feeding so the external watchdog does a FULL
+//     power-cycle (which also resets the modem, unlike a software restart).
+struct FeedInputs {
+  bool armed = false;
+  uint32_t now = 0;
+  uint32_t graceStart = 0;
+  uint32_t graceMaxMs = 0;  // 0 => unbounded grace (legacy)
+  uint32_t lastHeartbeat = 0;
+  uint32_t livenessTimeoutMs = 0;
+  uint32_t lastProductive = 0;
+  uint32_t productivityTimeoutMs = 0;  // 0 => productivity backstop disabled
+};
+
+inline bool shouldFeed(const FeedInputs &in) {
+  if (!in.armed) {
+    // boot grace: feed unconditionally, but not forever
+    if (in.graceMaxMs == 0) {
+      return true;
+    }
+    return !hyphen::timing::timedOut(in.graceStart, in.now, in.graceMaxMs);
+  }
+  // armed: require a fresh main-loop heartbeat...
+  if (hyphen::timing::timedOut(in.lastHeartbeat, in.now, in.livenessTimeoutMs)) {
+    return false;
+  }
+  // ...and, if enabled, recent end-to-end progress
+  if (in.productivityTimeoutMs != 0 &&
+      hyphen::timing::timedOut(in.lastProductive, in.now, in.productivityTimeoutMs)) {
+    return false;
+  }
+  return true;
+}
+
 }  // namespace watchdog
 }  // namespace hyphen

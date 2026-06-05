@@ -9,6 +9,7 @@
 #include "resources/devices/device-manager.h"
 #include <esp_heap_caps.h>
 #include "mbedtls/platform.h"
+#include "system/boot_info.h"
 #ifdef HYPHEN_STRESS_TEST
 #include "resources/utils/stress.h"
 #endif
@@ -54,8 +55,10 @@ void setup()
   // observable — restoreTimeFromPersist() previously ran before Serial.begin(),
   // so its result was invisible on the console.
   Serial.begin(115200);
+  hyphen::boot::capture(); // latch reset reason + bump boot counter (NVS ready here)
   bool timeRestored = Time.restoreTimeFromPersist();
-  Serial.printf("[BOOT] time restored=%d hasTime=%d unix=%lu\n",
+  Serial.printf("[BOOT] reset=%s boots=%lu time restored=%d hasTime=%d unix=%lu\n",
+                hyphen::boot::resetReasonStr(), hyphen::boot::bootCount(),
                 timeRestored, Time.hasTime(), (unsigned long)Time.now());
   delay(1000); // wait for the system to settle
 #ifdef BUILD_TIMESTAMP

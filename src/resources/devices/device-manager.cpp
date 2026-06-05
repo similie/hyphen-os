@@ -753,6 +753,13 @@ void DeviceManager::publisher()
 #endif
     }
 
+    if (success)
+    {
+        // End-to-end progress: refresh the watchdog's productivity backstop so a
+        // healthy device is never power-cycled by it.
+        Watchdog.productive();
+    }
+
     Utils::log("SENDING_EVENT_READY " + topic, String(((success == false || lowPowerModeSet) && !maintenance) ? "TRUE" : "FALSE"));
 
     if (!maintenance && (success == false || lowPowerModeSet))
