@@ -46,53 +46,32 @@ bool TimeClass::restoreTimeFromPersist()
     persist.put("timeValid", false); // Invalidate after reading
     unsigned long storedUnix = 0;
     persist.get("lastUnixTime", storedUnix);
-    unsigned long storedUptimeMs = 0;
-    persist.get("lastUptimeMs", storedUptimeMs);
 
-    if (storedUnix == 0 || storedUptimeMs == 0)
+    if (storedUnix == 0)
     {
         synced = false;
         return false;
     }
 
-    unsigned long nowUptimeMs = millis();
-    unsigned long deltaMs = nowUptimeMs - storedUptimeMs;
-    unsigned long deltaSec = deltaMs / 1000;
-    unsigned long approxUnix = storedUnix + deltaSec;
+    // Seed the clock with the last known-good time. We deliberately do NOT try to
+    // add elapsed time: millis() resets to 0 on every reboot and this function
+    // only runs after a reboot, so the previous session's stored uptime is not
+    // comparable to the current millis(). The old code computed
+    // `millis() - storedUptimeMs`, which underflowed (current millis() is tiny
+    // just after boot) and pushed the estimate ~49 days into the future, so it
+    // was always rejected as "too old" and the device booted with no time at all.
+    //
+    // storedUnix is stale by an unknown amount (we can't measure off-time), but it
+    // is a plausible, monotonic-ish seed that makes hasTime() true immediately so
+    // the device timestamps and publishes data instead of stalling. NTP and the
+    // cloud time-config correct it as soon as connectivity returns.
+    setSystemTime(storedUnix);
+    synced = false;              // not authoritative until a real sync
+    volatileTimeRestored = true; // but hasTime() is now true -> usable timestamps
+    lastRestoreTimeUnix = storedUnix;
+    lastRestoreUptimeMs = millis();
 
-    // Apply approximate time to system
-    setSystemTime(approxUnix);
-    synced = false;
-    volatileTimeRestored = true;
-    lastRestoreTimeUnix = approxUnix;
-    lastRestoreUptimeMs = nowUptimeMs;
-
-    Log.noticeln("Time restored from persist: approxUnix=%lu (stored=%lu + delta %lu ms)",
-                 approxUnix, storedUnix, deltaMs);
-
-    // 1) Check age of stored timestamp
-    unsigned long ageSeconds = approxUnix - storedUnix;
-    if (ageSeconds > MAX_ACCEPTABLE_AGE_SEC)
-    {
-        Log.warningln("Restored time is older than tolerance (%lu sec > %lu sec)",
-                      ageSeconds, (unsigned long)MAX_ACCEPTABLE_AGE_SEC);
-        synced = false;
-        return false;
-    }
-
-    // 2) Check drift potential
-    // define a conservative worst‐case drift rate, e.g., 100 ppm = 0.0001
-    const float worstCaseDriftRate = 0.0001f; // i.e., 100 ppm
-    float maxDriftSec = deltaSec * worstCaseDriftRate;
-    if (maxDriftSec > MAX_DRIFT_SEC)
-    {
-        Log.warningln("Possible drift exceeds tolerance (~%.2f sec > %lu sec)",
-                      maxDriftSec, (unsigned long)MAX_DRIFT_SEC);
-        synced = false;
-        return false;
-    }
-
-    // If we get here, the restored time is plausible
+    Log.noticeln("Time restored from persist (last known-good): unix=%lu", storedUnix);
     return true;
 }
 
@@ -201,9 +180,14 @@ void TimeClass::updateSystemTime(const struct tm &timeinfo, float timezoneOffset
 bool TimeClass::init(Connection &connection)
 {
     Log.noticeln("Waiting for NTP time sync: ");
-    uint8_t retryCount = UPDATE_ATTEMPS;
     synced = false;
-    for (retryCount; retryCount >= 0; retryCount--)
+    // Bounded retry. The previous loop `for (uint8_t retryCount = UPDATE_ATTEMPS;
+    // retryCount >= 0; retryCount--)` never terminated: an unsigned value is
+    // always >= 0, so while the socket stayed connected but no time source
+    // answered, init() retried forever and blocked the caller. A device whose
+    // time never syncs is now handled by restoreTimeFromPersist() (last known-good
+    // seed) plus the cloud time-config path, not by spinning here.
+    for (uint8_t attempt = 0; attempt < UPDATE_ATTEMPS; attempt++)
     {
         if (!connection.isConnected())
         {

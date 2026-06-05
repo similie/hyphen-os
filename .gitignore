@@ -6,4 +6,6 @@ data/private-key.pem
 data/root-ca.pem
 *.code-workspace
 platformio.ini
+; ...but the committed native (host) unit-test project config must be tracked:
+!tests-native/platformio.ini
 src/certs

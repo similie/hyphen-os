@@ -1,4 +1,5 @@
 #include "device-manager.h"
+#include "resources/utils/timing.h"
 /**
  * ~DeviceManager
  *
@@ -137,12 +138,24 @@ void DeviceManager::init()
     Blue.init(&Hyphen);
     // Storage.init();
 
-    if (!processor->init())
+    // Bounded connect retry with backoff. The previous code did `return init();`
+    // on failure — unbounded recursion that grew the stack on every attempt and
+    // eventually crashed a device with no radio, producing a reboot loop. Retry a
+    // fixed number of times, then proceed offline: sensors still initialize and
+    // buffer their readings, and loop()/the processor keep trying to (re)connect.
+    // During init() the watchdog runs in automatic() (Ticker) mode, so the backoff
+    // delays below do not starve the hardware watchdog.
+    const uint8_t MAX_NET_ATTEMPTS = 5;
+    for (uint8_t netAttempt = 1; !processor->init(); netAttempt++)
     {
         Serial.println("Failed to connect to the network");
         processor->disconnect();
-        vTaskDelay(1000);
-        return init();
+        if (netAttempt >= MAX_NET_ATTEMPTS)
+        {
+            Utils::log("NETWORK_INIT", "proceeding offline after max attempts");
+            break;
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000UL * netAttempt)); // linear backoff
     }
 
     Storage.init();
@@ -911,13 +924,20 @@ void DeviceManager::iterateDevices(void (DeviceManager::*iter)(Device *d), Devic
  */
 bool DeviceManager::waitForTrue(bool (DeviceManager::*func)(), DeviceManager *binding, unsigned long time)
 {
-    bool valid = false;
-    unsigned long then = millis();
-    while (!valid && (millis() - time) < then)
+    // Rollover-safe, non-busy poll. The previous check `(millis() - time) < then`
+    // underflowed in unsigned math and returned immediately during the first
+    // `time` ms after boot (exactly when init() uses it) and around the ~49.7-day
+    // millis() rollover. See src/resources/utils/timing.h + test_timing.
+    const uint32_t start = millis();
+    while (!hyphen::timing::timedOut(start, millis(), (uint32_t)time))
     {
-        valid = (binding->*func)();
+        if ((binding->*func)())
+        {
+            return true;
+        }
+        coreDelay(1); // yield so the watchdog/IDLE task and other cores breathe
     }
-    return valid;
+    return (binding->*func)(); // final check at the deadline
 }
 
 /**

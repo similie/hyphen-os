@@ -320,6 +320,12 @@ void OTAUpdate::downloadAndUpdate(const char *host, const char *firmwareUrl, con
     unsigned long lastProgressBytes = 0;
     while (client.connected() && written < contentLength)
     {
+        // This loop owns the main loop for the whole download, so refresh the
+        // watchdog liveness heartbeat per iteration: an OTA that keeps making
+        // progress stays alive, but one that truly wedges stops heartbeating and
+        // the hardware watchdog resets the board (the no-data break below also
+        // bounds a stalled-but-connected server to 30s).
+        Watchdog.heartbeat();
         int avail = client.available();
         if (avail > 0)
         {

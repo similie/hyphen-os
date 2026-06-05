@@ -1,5 +1,26 @@
 #include "system/wss-socket-client.h"
 #include <cstring>
+#include "resources/utils/timing.h"
+
+// Per-frame inbound read deadline. Kept well under the hardware-watchdog window
+// since poll() runs on the main loop: a peer that sends a frame header then
+// stalls must not be able to hang the device. Overridable via build flags.
+#ifndef HYPHEN_WSS_FRAME_READ_TIMEOUT_MS
+#define HYPHEN_WSS_FRAME_READ_TIMEOUT_MS 1500
+#endif
+
+bool WssSocketClient::awaitByte_(SecureClient &tls, uint32_t start, uint32_t timeoutMs)
+{
+    while (!tls.available())
+    {
+        if (!tls.connected() || hyphen::timing::timedOut(start, millis(), timeoutMs))
+        {
+            return false;
+        }
+        delay(1); // yield to other tasks instead of busy-spinning
+    }
+    return true;
+}
 
 void WssSocketClient::randomBytes(uint8_t *b, size_t n)
 {
@@ -248,13 +269,19 @@ void WssSocketClient::poll(SecureClient &tls, BinHandler onBin, TextHandler onTe
 
     // Keep it bounded
     static uint8_t buf[2048];
+    const uint32_t frameStart = millis();
     if (len > sizeof(buf))
     {
         setErr("ws_frame_too_big");
         for (uint64_t i = 0; i < len; i++)
         {
-            while (!tls.available())
-                delay(0);
+            if (!awaitByte_(tls, frameStart, HYPHEN_WSS_FRAME_READ_TIMEOUT_MS))
+            {
+                setErr("ws_read_timeout");
+                _up = false;
+                tls.stop();
+                return;
+            }
             (void)tls.read();
         }
         return;
@@ -262,8 +289,13 @@ void WssSocketClient::poll(SecureClient &tls, BinHandler onBin, TextHandler onTe
 
     for (uint64_t i = 0; i < len; i++)
     {
-        while (!tls.available())
-            delay(0);
+        if (!awaitByte_(tls, frameStart, HYPHEN_WSS_FRAME_READ_TIMEOUT_MS))
+        {
+            setErr("ws_read_timeout");
+            _up = false;
+            tls.stop();
+            return;
+        }
         uint8_t v = (uint8_t)tls.read();
         if (masked)
             v ^= mask[i & 3];
