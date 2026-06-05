@@ -513,6 +513,11 @@ void DeviceManager::publish()
         return;
     }
 
+    // Persist the synced clock periodically so a power loss / brownout can restore
+    // a recent timestamp on next boot. Self-rate-limited; only writes authoritative
+    // (cloud/NTP-synced) time.
+    Time.storeTimeToPersist();
+
     waitForTrue(&DeviceManager::isNotReading, this, 10000);
     Utils::log("PUBLICATION_EVENT", "EVENT=" + processor->getPublishTopic(false));
     // waitFor(DeviceManager::isNotReading, 10000);

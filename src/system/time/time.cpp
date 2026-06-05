@@ -5,7 +5,20 @@ extern const uint8_t ca_cert_bundle_end[] asm("_binary_data_crt_x509_crt_bundle_
 
 TimeClass::TimeClass()
 {
-    persist.begin("hyphen_time");
+    // Do NOT open NVS here. TimeClass is a global, so this constructor runs during
+    // C++ static init — BEFORE the Arduino core calls nvs_flash_init(). Opening
+    // here failed with `nvs_open NOT_INITIALIZED`, leaving the Preferences handle
+    // dead and silently breaking store/restore (the device never persisted or
+    // restored time, so a no-network boot had no time at all). Open lazily via
+    // ensurePersist() at first use, which happens from setup() once NVS is ready.
+}
+
+void TimeClass::ensurePersist()
+{
+    if (!persistReady)
+    {
+        persistReady = persist.begin("hyphen_time");
+    }
 }
 
 float TimeClass::tzOffset()
@@ -15,9 +28,18 @@ float TimeClass::tzOffset()
 
 bool TimeClass::storeTimeToPersist()
 {
+    ensurePersist();
     if (!isSynced())
     {
         return false;
+    }
+    // Rate-limit NVS writes: this is now called periodically (e.g. each publish)
+    // so a power loss has a recent timestamp to restore, not only on a clean
+    // reset. The first call after boot always writes; later calls at most every
+    // TIME_PERSIST_INTERVAL_MS so we don't wear the NVS flash.
+    if (lastStoreMs != 0 && (millis() - lastStoreMs) < TIME_PERSIST_INTERVAL_MS)
+    {
+        return true;
     }
     unsigned long currentUnix = now(); // your class’s now(), returns 0 if failed
     if (currentUnix == 0)
@@ -25,17 +47,17 @@ bool TimeClass::storeTimeToPersist()
         // no valid time to store
         return false;
     }
-    unsigned long uptimeMs = millis(); // or esp_timer_get_time()/1000
 
     persist.put("lastUnixTime", currentUnix);
-    persist.put("lastUptimeMs", uptimeMs);
     persist.put("timeValid", true);
-    Log.noticeln("Time stored for persist: unix=%lu, uptimeMs=%lu", currentUnix, uptimeMs);
+    lastStoreMs = millis();
+    Log.noticeln("Time stored for persist: unix=%lu", currentUnix);
 
     return true;
 }
 bool TimeClass::restoreTimeFromPersist()
 {
+    ensurePersist();
     bool timeValid = false;
     persist.get("timeValid", timeValid);
     if (!timeValid)
@@ -43,7 +65,10 @@ bool TimeClass::restoreTimeFromPersist()
         synced = false;
         return false;
     }
-    persist.put("timeValid", false); // Invalidate after reading
+    // Deliberately do NOT invalidate timeValid here. With periodic re-storing
+    // while synced, keeping the last-good time means EVERY reboot — including a
+    // string of brownouts before the network is back — restores a usable clock,
+    // not just the first reboot after each store.
     unsigned long storedUnix = 0;
     persist.get("lastUnixTime", storedUnix);
 

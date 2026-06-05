@@ -5,6 +5,13 @@
 #define DEFAULT_TIMEZONE 9.0
 #endif
 
+#ifndef TIME_PERSIST_INTERVAL_MS
+// Persist the clock at most this often. storeTimeToPersist() is now called
+// periodically (not only on a clean reset) so a power loss has a recent
+// timestamp to restore; the interval bounds NVS wear.
+#define TIME_PERSIST_INTERVAL_MS (15UL * 60UL * 1000UL) // 15 minutes
+#endif
+
 #include <ArduinoHttpClient.h>
 #include "time.h"
 #include <Arduino.h>
@@ -33,6 +40,9 @@ private:
     const uint8_t UPDATE_ATTEMPS = 1;
     void updateSystemTime(const struct tm &, float);
     Persistence persist;
+    bool persistReady = false;
+    void ensurePersist(); // open the NVS namespace lazily (after nvs_flash_init)
+    unsigned long lastStoreMs = 0; // rate-limit guard for periodic persistence
     const unsigned long MAX_ACCEPTABLE_AGE_SEC = 24 * 3600; // 24 hours
     const unsigned long MAX_DRIFT_SEC = 60;                 // 1 minute
     unsigned long lastRestoreTimeUnix = 0;
